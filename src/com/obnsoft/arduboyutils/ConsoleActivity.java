@@ -59,10 +59,10 @@ public class ConsoleActivity extends Activity {
         mTextViewMessage = (TextView) findViewById(R.id.textViewMessage);
 
         mPhysicaloid = ((MyApplication) getApplication()).getPhysicaloidInstance();
-        if (openDevice()) {
-            registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
-        } else {
+        registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
+        if (!openDevice()) {
             mButtonWrite.setEnabled(false);
+            Utils.showToast(this, R.string.messageDeviceOpenFailed);
             finish();
         }
     }

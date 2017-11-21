@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Arduboy Utility</string>
-    <string name="action_settings">Settings</string>
+    <string name="appCode">OBN-A18</string>
+    <string name="appName">Arduboy Utility</string>
+    <string name="image">image</string>
+    <string name="buttonWrite">Write</string>
+    <string name="menuConsole">シリアルコンソール</string>
+    <string name="menuUpper">上の階層へ</string>
+    <string name="menuBack">戻る</string>
+    <string name="menuAbout">バージョン情報</string>
+    <string name="messageNoFiles">ファイルがありません</string>
+    <string name="messageInvalid">不正</string>
+    <string name="messageNewFile">新規作成</string>
+    <string name="messageDeviceOpenFailed">Arduboy と通信ができません</string>
 </resources>

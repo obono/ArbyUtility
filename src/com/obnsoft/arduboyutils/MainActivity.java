@@ -13,6 +13,8 @@ import android.content.Intent;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -50,28 +52,25 @@ public class MainActivity extends Activity {
             setUploadProgressFromThread(value);
         }
         @Override
-        public void onPostUpload(boolean success) {
-            if(success) {
-                appendMessage("Succeeded!!\n");
-            } else {
-                appendMessage("Failed...\n");
-            }
-            mIsExecuting = false;
-            mPhysicaloid.close();
-            controlUiAvalabilityFromThread();
-        }
-        @Override
         public void onCancel() {
             appendMessage("Canceled\n");
-            mIsExecuting = false;
-            mPhysicaloid.close();
             controlUiAvalabilityFromThread();
         }
         @Override
         public void onError(TransferErrors err) {
             appendMessage("Error  : " + err.toString() + "\n");
+            controlUiAvalabilityFromThread();
+        }
+        @Override
+        public void onPostUpload(boolean success) {
+            if(success) {
+                setUploadProgress(0);
+                appendMessage("Succeeded!!\n");
+                mHexFilePath = null;
+            } else {
+                appendMessage("Failed...\n");
+            }
             mIsExecuting = false;
-            mPhysicaloid.close();
             controlUiAvalabilityFromThread();
         }
     };
@@ -95,6 +94,25 @@ public class MainActivity extends Activity {
         }
         registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
         controlUiAvalability();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_activity, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+        case R.id.menuMainConsole:
+            startActivity(new Intent(this, ConsoleActivity.class));
+            return true;
+        case R.id.menuMainAbout:
+            ((MyApplication) getApplication()).showVersion(this);
+            return true;
+        }
+        return false;
     }
 
     @Override

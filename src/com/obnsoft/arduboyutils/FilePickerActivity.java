@@ -27,13 +27,18 @@ import java.util.Locale;
 
 import android.app.ListActivity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
+import android.text.InputType;
 import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -55,10 +60,12 @@ public class FilePickerActivity extends ListActivity {
     private ArrayList<String> mStackPath = new ArrayList<String>();
     private FilePickerAdapter mAdapter;
 
-    private int mResIdDir = android.R.drawable.ic_menu_more;
-    private int mResIdFile = android.R.drawable.ic_menu_set_as;
-    private int mResIdNew = android.R.drawable.ic_menu_add;
-    private int mResIdNewMsg = 0;
+    private int mResIdDir = R.drawable.ic_folder;
+    private int mResIdFile = R.drawable.ic_file;
+    private int mResIdNew = R.drawable.ic_newfile;
+    private int mResIdNewMsg = R.string.messageNewFile;
+
+    /*-----------------------------------------------------------------------*/
 
     class FilePickerAdapter extends ArrayAdapter<File> {
 
@@ -142,9 +149,12 @@ public class FilePickerActivity extends ListActivity {
         }
     }
 
+    /*-----------------------------------------------------------------------*/
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.file_picker_activity);
 
         Intent intent = getIntent();
         String path = null;
@@ -213,6 +223,27 @@ public class FilePickerActivity extends ListActivity {
         }
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.file_picker, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+        case R.id.menuFilePickerBack:
+            onBackPressed();
+            return true;
+        case R.id.menuFilePickerGoUpper:
+            goToUpperDirectory();
+            return true;
+        }
+        return false;
+    }
+
+    /*-----------------------------------------------------------------------*/
+
     public void setResourceId(int dirId, int fileId, int newId, int newMsgId) {
         if (dirId != 0)     mResIdDir = dirId;
         if (fileId != 0)    mResIdFile = fileId;
@@ -228,19 +259,40 @@ public class FilePickerActivity extends ListActivity {
     }
 
     public void onCurrentDirectoryChanged(String path) {
-        ;
+        TextView tv = (TextView) findViewById(R.id.textViewCurrentDirectory);
+        tv.setText(getTrimmedCurrentDirectory(path));
     }
 
     public void onFileSelected(String path) {
         setResultAndFinish(path);
     }
 
-    public void onNewFileRequested(String directory, String extension) {
-        String newPath = directory + "newfile";
-        if (extension != null) {
-            newPath += extension;
-        }
-        setResultAndFinish(newPath);
+    public void onNewFileRequested(final String directory, final String extension) {
+        final EditText editText = new EditText(this);
+        editText.setSingleLine();
+        editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int whichButton) {
+                String fileName = editText.getText().toString().trim();
+                if (fileName.length() == 0 || fileName.startsWith(".") ||
+                        fileName.contains(File.separator) || fileName.contains(File.pathSeparator)) {
+                    Utils.showToast(FilePickerActivity.this, R.string.messageInvalid);
+                    return;
+                }
+                String newPath = directory.concat(fileName);
+                if (extension != null && !newPath.endsWith(extension)) {
+                    newPath = newPath.concat(extension);
+                }
+                if ((new File(newPath)).exists()) {
+                    onFileSelected(newPath);
+                } else {
+                    setResultAndFinish(newPath);
+                }
+            }
+        };
+        Utils.showCustomDialog(this, android.R.drawable.ic_input_add,
+                R.string.messageNewFile, editText, listener);
     }
 
     public void goToUpperDirectory() {

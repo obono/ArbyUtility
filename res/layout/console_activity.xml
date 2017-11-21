@@ -15,7 +15,7 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentRight="true"
         android:onClick="onClickWrite"
-        android:text="Write" />
+        android:text="@string/buttonWrite" />
 
     <EditText
         android:id="@+id/editTextWrite"
@@ -24,6 +24,7 @@
         android:layout_alignBaseline="@+id/buttonWrite"
         android:layout_alignParentLeft="true"
         android:layout_toLeftOf="@id/buttonWrite"
+        android:inputType="textUri"
         android:ems="10" >
         <requestFocus />
     </EditText>
