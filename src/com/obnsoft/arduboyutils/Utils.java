@@ -1,8 +1,10 @@
 package com.obnsoft.arduboyutils;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 
 import org.apache.http.HttpResponse;
@@ -13,16 +15,23 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface.OnClickListener;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class Utils {
 
     public static void showCustomDialog(
-            Context context, int iconId, int titleId, View view, OnClickListener listener) {
+            Context context, int iconId, int titleId, View view, final OnClickListener listener) {
         final AlertDialog dlg = new AlertDialog.Builder(context)
                 .setIcon(iconId)
                 .setTitle(titleId)
@@ -34,7 +43,8 @@ public class Utils {
                     context.getText(android.R.string.cancel), (OnClickListener) null);
         }
         if (view instanceof EditText) {
-            view.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            EditText editText = (EditText) view;
+            editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
                     if (hasFocus) {
@@ -43,6 +53,18 @@ public class Utils {
                     }
                 }
             });
+            if (listener != null) {
+                editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                    @Override
+                    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                        if (actionId == EditorInfo.IME_ACTION_DONE) {
+                            listener.onClick(dlg, AlertDialog.BUTTON_POSITIVE);
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+            }
         }
         dlg.show();
     }
@@ -58,41 +80,33 @@ public class Utils {
     public static String getPathFromUri(final Context context, final Uri uri) {
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             return uri.getPath();
+        } else if ("content".equalsIgnoreCase(uri.getScheme())) {
+            return generateTempFile(context, uri, false);
         } else if ("arduboy".equalsIgnoreCase(uri.getScheme())) {
-            return downloadFile(context, uri.getEncodedSchemeSpecificPart());
+            return generateTempFile(context, Uri.parse(uri.getEncodedSchemeSpecificPart()), true);
         }
         return null;
     }
 
-    public static String downloadFile(final Context context, final String url) {
-        final File file;
-        try {
-            String fileName = Uri.parse(url).getLastPathSegment();
-            String suffix = null;
-            if (fileName != null) {
-                int idx = fileName.lastIndexOf('.');
-                if (idx >= 0) {
-                    suffix = fileName.substring(idx + 1);
-                }
-            }
-            file = File.createTempFile("tmp", suffix, context.getCacheDir());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-
+    public static String generateTempFile(final Context context, final Uri uri,
+            final boolean isNet) {
+        final File file = new File(context.getCacheDir(), uri.getLastPathSegment());
         MyAsyncTaskWithDialog.ITask task = new MyAsyncTaskWithDialog.ITask() {
             @Override
             public Boolean task() {
                 InputStream in = null;
                 OutputStream out = null;
                 try {
-                    out = new FileOutputStream(file);
-                    HttpClient httpclient = new DefaultHttpClient();
-                    HttpResponse httpResponse = httpclient.execute(new HttpGet(url));
-                    in = httpResponse.getEntity().getContent();
+                    if (isNet) {
+                        HttpClient httpclient = new DefaultHttpClient();
+                        HttpResponse httpResponse = httpclient.execute(new HttpGet(uri.toString()));
+                        in = httpResponse.getEntity().getContent();
+                    } else {
+                        in = context.getContentResolver().openInputStream(uri);
+                    }
                     byte[] buffer = new byte[1024 * 1024];
                     int length;
+                    out = new FileOutputStream(file);
                     while ((length = in.read(buffer)) >= 0) {
                         out.write(buffer, 0, length);  
                     }
@@ -115,4 +129,40 @@ public class Utils {
         MyAsyncTaskWithDialog.execute(context, R.string.messageDownloading, task);
         return file.getAbsolutePath();
     }
+
+    public static void cleanCacheFiles(Context context) {
+        for (File file : context.getCacheDir().listFiles()) {
+            file.delete();
+        }
+    }
+
+    public static void showVersion(Context context) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View aboutView = inflater.inflate(R.layout.about, new ScrollView(context));
+        try {
+            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(
+                    context.getPackageName(), PackageManager.GET_META_DATA);
+            TextView textView = (TextView) aboutView.findViewById(R.id.textAboutVersion);
+            textView.setText("Version " + packageInfo.versionName);
+
+            StringBuilder buf = new StringBuilder();
+            InputStream in = context.getResources().openRawResource(R.raw.license);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+            String str;
+            while((str = reader.readLine()) != null) {
+                buf.append(str).append('\n');
+            }
+            textView = (TextView) aboutView.findViewById(R.id.textAboutMessage);
+            textView.setText(buf.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        new AlertDialog.Builder(context)
+                .setIcon(android.R.drawable.ic_menu_info_details)
+                .setTitle(R.string.menuAbout)
+                .setView(aboutView)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
 }

@@ -12,7 +12,10 @@ import android.content.Intent;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -58,6 +61,18 @@ public class ConsoleActivity extends Activity {
         mEditTextWrite = (EditText) findViewById(R.id.editTextWrite);
         mTextViewMessage = (TextView) findViewById(R.id.textViewMessage);
 
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        mEditTextWrite.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    onClickWrite(v);
+                    return true;
+                }
+                return false;
+            }
+        });
+
         mPhysicaloid = ((MyApplication) getApplication()).getPhysicaloidInstance();
         registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
         if (!openDevice()) {
@@ -81,6 +96,7 @@ public class ConsoleActivity extends Activity {
         if (str.length() > 0) {
             byte[] buf = str.getBytes();
             mPhysicaloid.write(buf, buf.length);
+            mEditTextWrite.setText(null);
         }
     }
 

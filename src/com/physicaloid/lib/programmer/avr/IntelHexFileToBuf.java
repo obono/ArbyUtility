@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 public class IntelHexFileToBuf {
 
@@ -65,6 +66,25 @@ public class IntelHexFileToBuf {
 
         is.close();
 
+    }
+
+    public static void convert(byte[] buf, OutputStream os) throws IOException {
+        StringBuffer strBuf = new StringBuffer();
+        int addr = 0;
+        int totalLength = buf.length;
+        while (addr < totalLength) {
+            int length = Math.min(totalLength - addr, 16);
+            int checksum = length + (addr & 0xFF) + (addr >> 8 & 0xFF);
+            strBuf.append(String.format(":%02X%04X00", length, addr));
+            for (int i = 0; i < length; i++, addr++) {
+                byte val = buf[addr];
+                strBuf.append(String.format("%02X", val));
+                checksum += val;
+            }
+            strBuf.append(String.format("%02X\n", -checksum & 0xFF));
+        }
+        strBuf.append(":00000001FF\n");
+        os.write(strBuf.toString().getBytes());
     }
 
 }

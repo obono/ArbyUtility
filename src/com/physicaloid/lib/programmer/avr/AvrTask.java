@@ -31,10 +31,10 @@ public class AvrTask {
 
     public AvrTask(Op operation, File file) throws FileNotFoundException {
         this.operation = operation;
+        String fileName = file.getName().toLowerCase(Locale.getDefault());
         switch (operation) {
         case UPLOAD_FLASH:
         case UPLOAD_EEPROM:
-            String fileName = file.getName().toLowerCase(Locale.getDefault());
             if (fileName.endsWith(EXT_ARDUBOY)) {
                 byte[] hexData = ArduboyUtils.extractHexFromArduboy(file);
                 inputStream = new ByteArrayInputStream(hexData);
@@ -47,6 +47,7 @@ public class AvrTask {
         case DOWNLOAD_FLASH:
         case DOWNLOAD_EEPROM:
             outputStream = new FileOutputStream(file);
+            isHex = fileName.endsWith(EXT_HEX);
             break;
         default:
             throw new IllegalArgumentException();
@@ -63,13 +64,14 @@ public class AvrTask {
         this.isHex = isHex;
     }
 
-    public AvrTask(Op operation, OutputStream outputStream) {
+    public AvrTask(Op operation, OutputStream outputStream, boolean isHex) {
         if (operation != Op.DOWNLOAD_FLASH || operation != Op.DOWNLOAD_EEPROM
                 || outputStream == null) {
             throw new IllegalArgumentException();
         }
         this.operation = operation;
         this.outputStream = outputStream;
+        this.isHex = isHex;
     }
 
     public Op getOperation() {

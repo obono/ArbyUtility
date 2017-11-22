@@ -24,7 +24,7 @@
         android:layout_alignBaseline="@+id/buttonWrite"
         android:layout_alignParentLeft="true"
         android:layout_toLeftOf="@id/buttonWrite"
-        android:inputType="textUri"
+        android:inputType="text|textUri"
         android:ems="10" >
         <requestFocus />
     </EditText>

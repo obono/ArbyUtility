@@ -141,14 +141,14 @@ public class AvrManager {
                     mProg.setConfig(mAVRConf, mAVRMemFlash);
                     result = mProg.paged_read();
                     if (result > 0) {
-                        putFileFromBuf(mAVRMemFlash, task.getOutputStream());
+                        putFileFromBuf(mAVRMemFlash, task.getOutputStream(), task.isHex());
                     }
                     break;
                 case DOWNLOAD_EEPROM:
                     mProg.setConfig(mAVRConf, mAVRMemEeprom);
                     result = mProg.paged_read();
                     if (result > 0) {
-                        putFileFromBuf(mAVRMemEeprom, task.getOutputStream());
+                        putFileFromBuf(mAVRMemEeprom, task.getOutputStream(), task.isHex());
                     }
                     break;
                 default:
@@ -230,15 +230,20 @@ public class AvrManager {
      * Output byte arrays to a file
      * @param avrMem
      * @param out
+     * @param isHex 
      * @throws FileNotFoundException
      * @throws IOException
      * @throws Exception
      */
-    private void putFileFromBuf(AVRMem avrMem, OutputStream out)
+    private void putFileFromBuf(AVRMem avrMem, OutputStream out, boolean isHex)
             throws FileNotFoundException, IOException, Exception {
 
         int byteLength = avrMem.buf.length;
-        out.write(avrMem.buf);
+        if (isHex) {
+            IntelHexFileToBuf.convert(avrMem.buf, out);
+        } else {
+            out.write(avrMem.buf);
+        }
         out.close();
 
         if (DEBUG_SHOW_HEXDUMP) {

@@ -164,6 +164,7 @@ public class FilePickerActivity extends ListActivity {
             mExtensions = intent.getStringArrayExtra(INTENT_EXTRA_EXTENSIONS);
             mWriteMode = intent.getBooleanExtra(INTENT_EXTRA_WRITEMODE, false);
         }
+        setTitle(mWriteMode ? R.string.appNameFilePickerWrite : R.string.appNameFilePickerRead);
 
         /*  Check top directory.  */
         if (mDirTop == null) {
@@ -268,9 +269,16 @@ public class FilePickerActivity extends ListActivity {
     }
 
     public void onNewFileRequested(final String directory, final String extension) {
+        String fileName = getString(R.string.fileName);
+        int fileNameLen = fileName.length();
+        if (extension != null) {
+            fileName = fileName.concat(extension);
+        }
         final EditText editText = new EditText(this);
         editText.setSingleLine();
         editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        editText.setText(fileName);
+        editText.setSelection(0, fileNameLen);
         DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int whichButton) {
