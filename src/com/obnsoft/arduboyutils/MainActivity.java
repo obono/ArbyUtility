@@ -125,10 +125,8 @@ public class MainActivity extends Activity {
         if (requestCode == PICK_FILE_REQUEST) {
             if (resultCode == RESULT_OK) {
                 mHexFilePath = data.getStringExtra(FilePickerActivity.INTENT_EXTRA_SELECTPATH);
-                mButtonExecute.setEnabled(true);
             } else {
                 mHexFilePath = null;
-                mButtonExecute.setEnabled(false);
             }
             controlUiAvalability();
         }
@@ -156,7 +154,7 @@ public class MainActivity extends Activity {
             mPhysicaloid.close();
             mIsExecuting = true;
         } else {
-            // Error case
+            Utils.showToast(this, R.string.messageDeviceOpenFailed);
             mIsExecuting = false;
         }
         controlUiAvalability();
@@ -184,6 +182,10 @@ public class MainActivity extends Activity {
         } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
             mPhysicaloid.clearReadListener();
             mPhysicaloid.close();
+        } else if (Intent.ACTION_VIEW.equals(action)) {
+            mHexFilePath = Utils.getPathFromUri(this, intent.getData());
+            Utils.showToast(this, mHexFilePath);
+            controlUiAvalability();
         }
     }
 
