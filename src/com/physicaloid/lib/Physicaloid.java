@@ -45,8 +45,6 @@ public class Physicaloid {
     private Context mContext;
 
     protected SerialCommunicator mSerial;
-    private Thread mUploadThread;
-    //private UploadCallBack mCallBack;
 
     private static final Object LOCK = new Object();
     protected static final Object LOCK_WRITE = new Object();
@@ -183,10 +181,11 @@ public class Physicaloid {
      * Uploads a binary file to a device on background process. No need to open().
      * @param board board profile e.g. Boards.ARDUINO_UNO
      * @param filePath a binary file path e.g. /sdcard/arduino/Blink.hex
+     * @return true if it succeeded
      * @throws RuntimeException
      */
-    public void upload(Boards board, String filePath) throws RuntimeException {
-        upload(board, filePath, null);
+    public boolean upload(Boards board, String filePath) throws RuntimeException {
+        return upload(board, filePath, null);
     }
 
     /**
@@ -194,9 +193,10 @@ public class Physicaloid {
      * @param board board profile e.g. Boards.ARDUINO_UNO
      * @param filePath a binary file path e.g. /sdcard/arduino/Blink.uno.hex
      * @param callback
+     * @return true if it succeeded
      * @throws RuntimeException
      */
-    public void upload(Boards board, String filePath, UploadCallBack callback)
+    public boolean upload(Boards board, String filePath, ProcessCallBack callback)
             throws RuntimeException {
         ArrayList<AvrTask> tasks = new ArrayList<AvrTask>();
         try {
@@ -209,19 +209,20 @@ public class Physicaloid {
             if (callback != null) {
                 callback.onError(TransferErrors.FILE_OPEN);
             }
-            return;
+            return false;
         }
-        processTasks(tasks, board, callback);
+        return processTasks(tasks, board, callback);
     }
 
     /**
      * Uploads a binary file to a device on background process. No need to open().
      * @param board board profile e.g. Boards.ARDUINO_UNO
      * @param fileStream a binary stream e.g. getResources().getAssets().open("Blink.uno.hex")
+     * @return true if it succeeded
      * @throws RuntimeException
      */
-    public void upload(Boards board, InputStream fileStream) throws RuntimeException {
-        upload(board, fileStream, null);
+    public boolean upload(Boards board, InputStream fileStream) throws RuntimeException {
+        return upload(board, fileStream, null);
     }
 
     /**
@@ -229,13 +230,14 @@ public class Physicaloid {
      * @param board board profile e.g. Boards.ARDUINO_UNO
      * @param fileStream a binary stream e.g. getResources().getAssets().open("Blink.uno.hex")
      * @param callback
+     * @return true if it succeeded
      * @throws RuntimeException
      */
-    public void upload(Boards board, InputStream fileStream, UploadCallBack callback)
+    public boolean upload(Boards board, InputStream fileStream, ProcessCallBack callback)
             throws RuntimeException {
         ArrayList<AvrTask> tasks = new ArrayList<AvrTask>();
         tasks.add(new AvrTask(AvrTask.Op.UPLOAD_FLASH, fileStream, true));
-        processTasks(tasks, board, callback);
+        return processTasks(tasks, board, callback);
     }
 
     /**
@@ -243,15 +245,16 @@ public class Physicaloid {
      * @param tasks
      * @param board board profile
      * @param callback
+     * @return true if it succeeded
      * @throws RuntimeException
      */
-    public void processTasks(final List<AvrTask> tasks, final Boards board,
-            final UploadCallBack callback) throws RuntimeException {
+    public boolean processTasks(final List<AvrTask> tasks, final Boards board,
+            final ProcessCallBack callback) throws RuntimeException {
 
         final boolean serialIsNull;
         if (mSerial == null) { // if not open
             if (DEBUG_SHOW) {
-                Log.d(TAG, "upload : mSerial is null");
+                Log.d(TAG, "process : mSerial is null");
             }
             // need to run on non-thread
             mSerial = new AutoCommunicator().getSerialCommunicator(mContext);
@@ -260,102 +263,86 @@ public class Physicaloid {
             serialIsNull = false;
         }
 
-        mUploadThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                synchronized (LOCK) {
-                synchronized (LOCK_WRITE) {
-                synchronized (LOCK_READ) {
-                    UartConfig tmpUartConfig = new UartConfig();
+        synchronized (LOCK) {
+        synchronized (LOCK_WRITE) {
+        synchronized (LOCK_READ) {
+            UartConfig tmpUartConfig = new UartConfig();
 
+            if (mSerial == null) { // fail
+                if(DEBUG_SHOW) { Log.d(TAG, "process : mSerial is null"); }
+                if (callback != null) {
+                    callback.onError(TransferErrors.OPEN_DEVICE);
+                }
+                mSerial = null;
+                return false;
+            }
 
-                    if (mSerial == null) { // fail
-                        if(DEBUG_SHOW) { Log.d(TAG, "upload : mSerial is null"); }
-                        if (callback != null) {
-                            callback.onError(TransferErrors.OPEN_DEVICE);
-                        }
-                        mSerial = null;
-                        return;
-                    }
-
-                    if(!mSerial.isOpened()){
-                        if(!mSerial.open()) {
-                            if(DEBUG_SHOW) { Log.d(TAG, "upload : cannot mSerial.open"); }
-                            if (callback != null) { callback.onError(TransferErrors.OPEN_DEVICE); }
-                            if (serialIsNull) {
-                                mSerial.close();
-                            }
-                            mSerial = null;
-                            return;
-                        }
-                        if(DEBUG_SHOW) { Log.d(TAG, "upload : open successful"); }
-                    } else { // if already open
-                        UartConfig origUartConfig = mSerial.getUartConfig();
-                        tmpUartConfig.baudrate = origUartConfig.baudrate;
-                        tmpUartConfig.dataBits = origUartConfig.dataBits;
-                        tmpUartConfig.stopBits = origUartConfig.stopBits;
-                        tmpUartConfig.parity = origUartConfig.parity;
-                        tmpUartConfig.dtrOn = origUartConfig.dtrOn;
-                        tmpUartConfig.rtsOn = origUartConfig.rtsOn;
-                        if(DEBUG_SHOW) { Log.d(TAG, "upload : already open"); }
-                    }
-
-                    //mSerial.stopReadListener();
-                    mSerial.clearBuffer();
-
-                    boolean ret = false;
-                    if (callback != null) {
-                        callback.onPreUpload();
-                    }
-                    AvrManager avrManager = new AvrManager(mSerial);
-                    mSerial.setUartConfig(new UartConfig());
-                    ret = avrManager.run(tasks, board, callback);
-                    if (callback != null) {
-                        callback.onPostUpload(ret);
-                    }
-
+            if(!mSerial.isOpened()){
+                if(!mSerial.open()) {
+                    if(DEBUG_SHOW) { Log.d(TAG, "process : cannot mSerial.open"); }
+                    if (callback != null) { callback.onError(TransferErrors.OPEN_DEVICE); }
                     if (serialIsNull) {
                         mSerial.close();
-                    } else {
-                        mSerial.setUartConfig(tmpUartConfig); // recover if already open
-                        mSerial.clearBuffer();
-                        //mSerial.startReadListener();
                     }
-
-                }}}
+                    mSerial = null;
+                    return false;
+                }
+                if(DEBUG_SHOW) { Log.d(TAG, "process : open successful"); }
+            } else { // if already open
+                UartConfig origUartConfig = mSerial.getUartConfig();
+                tmpUartConfig.baudrate = origUartConfig.baudrate;
+                tmpUartConfig.dataBits = origUartConfig.dataBits;
+                tmpUartConfig.stopBits = origUartConfig.stopBits;
+                tmpUartConfig.parity = origUartConfig.parity;
+                tmpUartConfig.dtrOn = origUartConfig.dtrOn;
+                tmpUartConfig.rtsOn = origUartConfig.rtsOn;
+                if(DEBUG_SHOW) { Log.d(TAG, "process : already open"); }
             }
-        });
 
-        mUploadThread.start();
-    }
+            mSerial.clearBuffer();
 
-    public void cancelUpload() {
-        if (mUploadThread == null) {
-            return;
-        }
-        mUploadThread.interrupt();
+            boolean ret = false;
+            if (callback != null) {
+                callback.onPreProcess();
+            }
+            AvrManager avrManager = new AvrManager(mSerial);
+            mSerial.setUartConfig(new UartConfig());
+            ret = avrManager.run(tasks, board, callback);
+            if (callback != null) {
+                callback.onPostProcess(ret);
+            }
+
+            if (serialIsNull) {
+                mSerial.close();
+            } else {
+                mSerial.setUartConfig(tmpUartConfig); // recover if already open
+                mSerial.clearBuffer();
+            }
+
+            return ret;
+        }}}
     }
 
     /**
      * Callbacks of program process<br>
      * normal process:<br>
-     *  onPreUpload() -> onUploading -> onPostUpload<br>
+     *  onPreProcess() -> onProcessing -> onPostProcess<br>
      * cancel:<br>
-     *  onPreUpload() -> onUploading -> onCancel -> onPostUpload<br>
+     *  onPreProcess() -> onProcessing -> onCancel -> onPostProcess<br>
      * error:<br>
-     *  onPreUpload   |<br>
-     *  onUploading   | -> onError<br>
-     *  onPostUpload  |<br>
+     *  onPreProcess   |<br>
+     *  onProcessing   | -> onError<br>
+     *  onPostProcess  |<br>
      * @author keisuke
      *
      */
-    public interface UploadCallBack{
+    public interface ProcessCallBack{
         /*
          * Callback methods
          */
-        void onPreUpload();
-        void onUploading(int value);
-        void onPostUpload(boolean success);
+        void onPreProcess();
+        void onProcessing(AvrTask.Op operation, int value);
+        void onPostProcess(boolean success);
         void onCancel();
         void onError(TransferErrors err);
     }

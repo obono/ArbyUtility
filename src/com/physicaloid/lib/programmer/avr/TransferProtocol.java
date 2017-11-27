@@ -30,14 +30,15 @@
 
 package com.physicaloid.lib.programmer.avr;
 
-import com.physicaloid.lib.Physicaloid.UploadCallBack;
+import com.physicaloid.lib.Physicaloid.ProcessCallBack;
 import com.physicaloid.lib.framework.SerialCommunicator;
 
 public abstract class TransferProtocol {
     @SuppressWarnings("unused")
     private static final String TAG = TransferProtocol.class.getSimpleName();
 
-    UploadCallBack callback;
+    ProcessCallBack callback;
+    AvrTask.Op      operation;
     public TransferProtocol(){};
 
     public abstract void setSerial(SerialCommunicator comm);
@@ -50,14 +51,18 @@ public abstract class TransferProtocol {
     public abstract int  paged_write();
     public abstract void disable();
 
-    public void setCallback(UploadCallBack callback) {
+    public void setCallback(ProcessCallBack callback) {
         this.callback = callback;
+    }
+
+    protected void setOperation(AvrTask.Op operation) {
+        this.operation = operation;
     }
 
     protected void report_progress(int prog) {
         if(prog > 100) { prog = 100; }
         if(callback == null) return;
-        callback.onUploading(prog);
+        callback.onProcessing(operation, prog);
     }
 
     protected void report_cancel() {

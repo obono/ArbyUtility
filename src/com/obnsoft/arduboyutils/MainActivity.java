@@ -1,16 +1,19 @@
 package com.obnsoft.arduboyutils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
+import com.obnsoft.arduboyutils.MyAsyncTaskWithDialog.Result;
 import com.physicaloid.lib.Boards;
 import com.physicaloid.lib.Physicaloid;
-import com.physicaloid.lib.Physicaloid.UploadCallBack;
+import com.physicaloid.lib.Physicaloid.ProcessCallBack;
 import com.physicaloid.lib.programmer.avr.AvrTask;
 import com.physicaloid.lib.programmer.avr.AvrTask.Op;
 import com.physicaloid.lib.programmer.avr.TransferErrors;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -22,7 +25,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -41,48 +43,10 @@ public class MainActivity extends Activity {
 
     private OperationInfo[] mOperationInfos;
     private Button          mButtonExecute;
-    private Button          mButtonCancel;
-    private ProgressBar     mProgressBarExecute;
-    private TextView        mTextViewMessage;
 
-    private Handler         mHandler = new Handler();
     private BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             handleIntent(intent);
-        }
-    };
-    private UploadCallBack mUploadCallback = new UploadCallBack() {
-        @Override
-        public void onPreUpload() {
-            appendMessage("Start procedure.\n");
-        }
-        @Override
-        public void onUploading(int value) {
-            setUploadProgressFromThread(value);
-        }
-        @Override
-        public void onCancel() {
-            appendMessage("Canceled\n");
-            controlUiAvalabilityFromThread();
-        }
-        @Override
-        public void onError(TransferErrors err) {
-            appendMessage("Error  : " + err.toString() + "\n");
-            controlUiAvalabilityFromThread();
-        }
-        @Override
-        public void onPostUpload(boolean success) {
-            if (success) {
-                setUploadProgress(0);
-                appendMessage("Succeeded!!\n");
-                for (OperationInfo info : mOperationInfos) {
-                    info.mFilePath = null;
-                }
-            } else {
-                appendMessage("Failed...\n");
-            }
-            mIsExecuting = false;
-            controlUiAvalabilityFromThread();
         }
     };
 
@@ -130,9 +94,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
         mButtonExecute = (Button) findViewById(R.id.buttonExecute);
-        mButtonCancel = (Button) findViewById(R.id.buttonCancel);
-        mProgressBarExecute = (ProgressBar) findViewById(R.id.pbarUpload);
-        mTextViewMessage = (TextView) findViewById(R.id.textViewMessage);
         mOperationInfos = new OperationInfo[] {
                 new OperationInfo(R.id.viewOperationDownloadFlash,
                         R.string.textViewOprationDownloadFlash,
@@ -225,33 +186,13 @@ public class MainActivity extends Activity {
         controlUiAvalability();
     }
 
-    public void onClickCancel(View v) {
-        if (mIsExecuting) {
-            mPhysicaloid.cancelUpload();
-        }
-    }
-
     /*-----------------------------------------------------------------------*/
 
     private void handleIntent(Intent intent) {
         String action = intent.getAction();
         if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
             if (mIsExecuting) {
-                try {
-                    ArrayList<AvrTask> tasks = new ArrayList<AvrTask>();
-                    for (OperationInfo info : mOperationInfos) {
-                        if (info.mToggleButton.isChecked()) {
-                            tasks.add(new AvrTask(
-                                    info.mOperation, new File(info.mFilePath)));
-                        }
-                    }
-                    setUploadProgress(0);
-                    mPhysicaloid.processTasks(tasks, Boards.ARDUINO_LEONARD, mUploadCallback);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    mIsExecuting = false;
-                    controlUiAvalability();
-                }
+                executeOperations();
             }
         } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
             mPhysicaloid.clearReadListener();
@@ -262,15 +203,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void appendMessage(final CharSequence text) {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mTextViewMessage.append(text);
-            }
-        });
-    }
-
     private void controlUiAvalability() {
         boolean isAnyEnabled = false;
         boolean isAllAvailable = true;
@@ -278,7 +210,8 @@ public class MainActivity extends Activity {
         for (OperationInfo info : mOperationInfos) {
             boolean enabled = info.mIsActive;
             info.mToggleButton.setChecked(enabled);
-            info.mButtonPickFile.setEnabled(enabled);
+            info.mToggleButton.setEnabled(enabled && !mIsExecuting);
+            info.mButtonPickFile.setEnabled(enabled && !mIsExecuting);
             info.mTextViewOperation.setEnabled(enabled);
             info.mTextViewFilename.setEnabled(enabled);
 
@@ -297,29 +230,126 @@ public class MainActivity extends Activity {
         }
 
         mButtonExecute.setEnabled(isAnyEnabled && isAllAvailable && !mIsExecuting);
-        mButtonCancel.setEnabled(mIsExecuting);
     }
 
-    private void controlUiAvalabilityFromThread() {
-        mHandler.post(new Runnable() {
+    /*-----------------------------------------------------------------------*/
+
+    private void executeOperations() {
+        final ArrayList<AvrTask> operations = new ArrayList<AvrTask>();
+        try {
+            for (OperationInfo info : mOperationInfos) {
+                if (info.mToggleButton.isChecked()) {
+                    operations.add(new AvrTask(
+                            info.mOperation, new File(info.mFilePath)));
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Utils.showToast(MainActivity.this, R.string.messageExecutingFileNotFound);
+            mIsExecuting = false;
+            controlUiAvalability();
+            return;
+        }
+
+        final Handler handler = new Handler();
+        MyAsyncTaskWithDialog.ITask task = new MyAsyncTaskWithDialog.ITask() {
+            private AvrTask.Op  mCurrentOperation = null;
+            private String      mErrorMessage = null;
+
             @Override
-            public void run() {
+            public Boolean task(final ProgressDialog dialog) {
+                ProcessCallBack callback = new ProcessCallBack() {
+                    @Override
+                    public void onPreProcess() {
+                        dialog.setIndeterminate(false);
+                        dialog.setProgress(0);
+                    }
+                    @Override
+                    public void onProcessing(AvrTask.Op operation, int value) {
+                        dialog.setProgress(value);
+                        if (mCurrentOperation != operation) {
+                            mCurrentOperation = operation;
+                            final int resId;
+                            switch (operation) {
+                            case DOWNLOAD_FLASH:
+                                resId = R.string.messageExecutingDownloadFlash;
+                                break;
+                            case DOWNLOAD_EEPROM:
+                                resId = R.string.messageExecutingDownloadEeprom;
+                                break;
+                            case UPLOAD_FLASH:
+                                resId = R.string.messageExecutingUploadFlash;
+                                break;
+                            case UPLOAD_EEPROM:
+                                resId = R.string.messageExecutingUploadEeprom;
+                                break;
+                            default:
+                                resId = 0;
+                                break;
+                            }
+                            if (resId != 0) {
+                                handler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        dialog.setMessage(getText(resId));
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    @Override
+                    public void onCancel() {
+                        // do nothing
+                    }
+                    @Override
+                    public void onError(TransferErrors err) {
+                        mErrorMessage = err.toString();
+                    }
+                    @Override
+                    public void onPostProcess(boolean success) {
+                        if (!success && mErrorMessage == null) {
+                            mErrorMessage = "Operation(s) was failed";
+                        }
+                    }
+                };
+                try {
+                    return mPhysicaloid.processTasks(operations, Boards.ARDUINO_LEONARD, callback);
+                } catch (RuntimeException e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+
+            public void cancel() {
+                // do nothing
+            }
+
+            @Override
+            public void post(Result result) {
+                switch (result) {
+                case SUCCEEDED:
+                    for (OperationInfo info : mOperationInfos) {
+                        info.mFilePath = null;
+                    }
+                    Utils.showToast(MainActivity.this, R.string.messageExecutingCompleted);
+                    break;
+                default:
+                case FAILED:
+                    if (mErrorMessage == null) {
+                        Utils.showToast(MainActivity.this, R.string.messageExecutingFailedUnknwon);
+                    } else {
+                        Utils.showToast(MainActivity.this,
+                                getString(R.string.messageExecutingFailed).concat(mErrorMessage));
+                    }
+                case CANCELLED:
+                    break;
+                }
+                mIsExecuting = false;
                 controlUiAvalability();
             }
-        });
-    }
+        };
 
-    private void setUploadProgress(int progress) {
-        mProgressBarExecute.setProgress(progress);
-    }
-
-    private void setUploadProgressFromThread(final int progress) {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                setUploadProgress(progress);
-            }
-        });
+        MyAsyncTaskWithDialog.execute(this, R.string.messageExecutingPrepare, task);
     }
 
 }

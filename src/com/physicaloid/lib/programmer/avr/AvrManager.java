@@ -34,8 +34,9 @@ import android.util.Log;
 
 import com.obnsoft.arduboyutils.BuildConfig;
 import com.physicaloid.lib.Boards;
-import com.physicaloid.lib.Physicaloid.UploadCallBack;
+import com.physicaloid.lib.Physicaloid.ProcessCallBack;
 import com.physicaloid.lib.framework.SerialCommunicator;
+import com.physicaloid.lib.programmer.avr.AvrTask.Op;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -64,7 +65,7 @@ public class AvrManager {
         mComm = serial;
     }
 
-    public boolean run(AvrTask task, Boards board, UploadCallBack callback) {
+    public boolean run(AvrTask task, Boards board, ProcessCallBack callback) {
         if (task != null) {
             ArrayList<AvrTask> tasks = new ArrayList<AvrTask>();
             tasks.add(task);
@@ -73,7 +74,7 @@ public class AvrManager {
         return true;
     }
 
-    public boolean run(List<AvrTask> tasks, Boards board, UploadCallBack callback) {
+    public boolean run(List<AvrTask> tasks, Boards board, ProcessCallBack callback) {
         if (board != Boards.ARDUINO_LEONARD) {
             if (callback != null) {
                 callback.onError(TransferErrors.AVR_CHIPTYPE);
@@ -129,15 +130,18 @@ public class AvrManager {
                 switch (task.getOperation()) {
                 case UPLOAD_FLASH:
                     getFileToBuf(mAVRMemFlash, task.getInputStream(), task.isHex());
+                    mProg.setOperation(Op.UPLOAD_FLASH);
                     mProg.setConfig(mAVRConf, mAVRMemFlash);
                     result = mProg.paged_write();
                     break;
                 case UPLOAD_EEPROM:
                     getFileToBuf(mAVRMemEeprom, task.getInputStream(), task.isHex());
+                    mProg.setOperation(Op.UPLOAD_EEPROM);
                     mProg.setConfig(mAVRConf, mAVRMemEeprom);
                     result = mProg.paged_write();
                     break;
                 case DOWNLOAD_FLASH:
+                    mProg.setOperation(Op.DOWNLOAD_FLASH);
                     mProg.setConfig(mAVRConf, mAVRMemFlash);
                     result = mProg.paged_read();
                     if (result > 0) {
@@ -145,6 +149,7 @@ public class AvrManager {
                     }
                     break;
                 case DOWNLOAD_EEPROM:
+                    mProg.setOperation(Op.DOWNLOAD_EEPROM);
                     mProg.setConfig(mAVRConf, mAVRMemEeprom);
                     result = mProg.paged_read();
                     if (result > 0) {

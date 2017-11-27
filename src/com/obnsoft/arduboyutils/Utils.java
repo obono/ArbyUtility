@@ -12,7 +12,10 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 
+import com.obnsoft.arduboyutils.MyAsyncTaskWithDialog.Result;
+
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface.OnClickListener;
 import android.content.pm.PackageInfo;
@@ -29,6 +32,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class Utils {
+
+    private static final int BUFFER_SIZE = 1024 * 1024;
 
     public static void showCustomDialog(
             Context context, int iconId, int titleId, View view, final OnClickListener listener) {
@@ -92,8 +97,9 @@ public class Utils {
             final boolean isNet) {
         final File file = new File(context.getCacheDir(), uri.getLastPathSegment());
         MyAsyncTaskWithDialog.ITask task = new MyAsyncTaskWithDialog.ITask() {
+            private boolean mIsCancelled = false;
             @Override
-            public Boolean task() {
+            public Boolean task(ProgressDialog dialog) {
                 InputStream in = null;
                 OutputStream out = null;
                 try {
@@ -104,11 +110,11 @@ public class Utils {
                     } else {
                         in = context.getContentResolver().openInputStream(uri);
                     }
-                    byte[] buffer = new byte[1024 * 1024];
+                    byte[] buffer = new byte[BUFFER_SIZE];
                     int length;
                     out = new FileOutputStream(file);
-                    while ((length = in.read(buffer)) >= 0) {
-                        out.write(buffer, 0, length);  
+                    while ((length = in.read(buffer)) >= 0 && !mIsCancelled) {
+                        out.write(buffer, 0, length);
                     }
                     out.close(); 
                     in.close();
@@ -120,9 +126,19 @@ public class Utils {
                 return true;
             };
             @Override
-            public void post(Boolean result) {
-                if (!result) {
+            public void cancel() {
+                mIsCancelled = true;
+            }
+            @Override
+            public void post(Result result) {
+                switch (result) {
+                case FAILED:
                     Utils.showToast(context, R.string.messageDownloadFailed);
+                default:
+                case CANCELLED:
+                    file.delete();
+                case SUCCEEDED:
+                    break;
                 }
             }
         };
