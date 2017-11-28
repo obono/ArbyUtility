@@ -31,7 +31,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 public class UsbCdcConnection {
-    private static final boolean DEBUG_SHOW = true && BuildConfig.DEBUG;
+    private static final boolean DEBUG_SHOW = BuildConfig.DEBUG && false;
 
     private static final String TAG = UsbCdcConnection.class.getSimpleName();
 

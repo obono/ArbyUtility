@@ -51,7 +51,9 @@ public class UartCdcAcm extends SerialCommunicator{
     private static final int USB_REQUESTID_SETCONTROLLINESTATE  = 0x22;
     private static final int USB_CONTROL_VALUE_DTR  = 0x0001;
     private static final int USB_CONTROL_VALUE_RTS  = 0x0002;
-    private static final int USB_TIMEOUT            = 100;
+    private static final int USB_READ_TIMEOUT       = 5000;
+    private static final int USB_WRITE_TIMEOUT      = 1000;
+    private static final int USB_REQUEST_TIMEOUT    = 100;
 
     private RingBuffer mBuffer;
 
@@ -119,7 +121,7 @@ public class UartCdcAcm extends SerialCommunicator{
             System.arraycopy(buf, offset, wbuf, 0, write_size);
 
             written_size = mConnection.bulkTransfer(
-                    mEndpointOut, wbuf, write_size, USB_TIMEOUT);
+                    mEndpointOut, wbuf, write_size, USB_WRITE_TIMEOUT);
 
             if (written_size < 0) {
                 return -1;
@@ -146,11 +148,11 @@ public class UartCdcAcm extends SerialCommunicator{
         public void run() {
             int len=0;
             byte[] rbuf = new byte[USB_READ_BUFFER_SIZE];
-            for (;;) {// this is the main loop for transferring
+            while (!mReadThreadStop) {// this is the main loop for transferring
 
                 try {
-                    len = mConnection.bulkTransfer(mEndpointIn,
-                            rbuf, rbuf.length, 1000);
+                    len = mConnection.bulkTransfer(
+                            mEndpointIn, rbuf, rbuf.length, USB_READ_TIMEOUT);
                 } catch(Exception e) {
                     Log.e(TAG, e.toString());
                 }
@@ -158,10 +160,6 @@ public class UartCdcAcm extends SerialCommunicator{
                 if (len > 0) {
                     mBuffer.add(rbuf, len);
                     onRead(len);
-                }
-
-                if (mReadThreadStop) {
-                    return;
                 }
 
             }
@@ -237,7 +235,7 @@ public class UartCdcAcm extends SerialCommunicator{
                 0x00, 0x00, 0x08
         };
         int ret = mConnection.controlTransfer(USB_REQUEST_TYPE, USB_REQUESTID_SETLINECODING, 0,
-                mInterfaceNum, buf, buf.length, USB_TIMEOUT);
+                mInterfaceNum, buf, buf.length, USB_REQUEST_TIMEOUT);
         if(ret < 0) { 
             if(DEBUG_SHOW) { Log.d(TAG, "Fail to setBaudrate"); }
             return false;
@@ -292,7 +290,7 @@ public class UartCdcAcm extends SerialCommunicator{
             ctrlValue |= USB_CONTROL_VALUE_RTS;
         }
         int ret = mConnection.controlTransfer(USB_REQUEST_TYPE, USB_REQUESTID_SETCONTROLLINESTATE,
-                ctrlValue, mInterfaceNum, null, 0, USB_TIMEOUT);
+                ctrlValue, mInterfaceNum, null, 0, USB_REQUEST_TIMEOUT);
         if(ret < 0) { 
             if(DEBUG_SHOW) { Log.d(TAG, "Fail to setDtrRts"); }
             return false;

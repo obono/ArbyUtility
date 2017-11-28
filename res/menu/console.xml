@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item
+        android:id="@+id/menuConsoleCaptureMode"
+        android:title="@string/menuScreenCapture"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:showAsAction="ifRoom"
+        />
+    <item
+        android:id="@+id/menuConsoleClear"
+        android:title="@string/menuSerialClear"
+        android:icon="@android:drawable/ic_menu_close_clear_cancel"
+        android:showAsAction="always"
+        />
+</menu>

@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class Physicaloid {
-    private static final boolean DEBUG_SHOW = true && BuildConfig.DEBUG;
+    private static final boolean DEBUG_SHOW = BuildConfig.DEBUG && true;
     private static final String TAG = Physicaloid.class.getSimpleName();
 
     private Context mContext;

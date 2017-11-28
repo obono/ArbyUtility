@@ -154,6 +154,7 @@ public class FilePickerActivity extends ListActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getActionBar().setDisplayHomeAsUpEnabled(true);
         setContentView(R.layout.file_picker_activity);
 
         Intent intent = getIntent();
@@ -233,6 +234,9 @@ public class FilePickerActivity extends ListActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+        case android.R.id.home:
+            finish();
+            break;
         case R.id.menuFilePickerBack:
             onBackPressed();
             return true;
