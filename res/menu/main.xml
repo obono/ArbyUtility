@@ -3,7 +3,7 @@
     <item
         android:id="@+id/menuMainConsole"
         android:title="@string/menuConsole"
-        android:icon="@android:drawable/ic_menu_edit"
+        android:icon="@drawable/ic_menu_console"
         android:showAsAction="always"
         />
     <item

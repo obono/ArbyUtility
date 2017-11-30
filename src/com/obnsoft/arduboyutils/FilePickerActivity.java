@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Locale;
 
+import com.physicaloid.lib.programmer.avr.AvrTask;
+
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -60,11 +62,6 @@ public class FilePickerActivity extends ListActivity {
     private ArrayList<String> mStackPath = new ArrayList<String>();
     private FilePickerAdapter mAdapter;
 
-    private int mResIdDir = R.drawable.ic_folder;
-    private int mResIdFile = R.drawable.ic_file;
-    private int mResIdNew = R.drawable.ic_newfile;
-    private int mResIdNewMsg = R.string.messageNewFile;
-
     /*-----------------------------------------------------------------------*/
 
     class FilePickerAdapter extends ArrayAdapter<File> {
@@ -72,8 +69,8 @@ public class FilePickerActivity extends ListActivity {
         private Context mContext;
 
         class FilePickerViewHolder {
-            public ImageView imageView;
-            public TextView textView;
+            public ImageView    imageView;
+            public TextView     textView;
         }
 
         public FilePickerAdapter(Context context) {
@@ -138,12 +135,29 @@ public class FilePickerActivity extends ListActivity {
             holder.textView.setSingleLine(true);
             holder.textView.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
             if (mWriteMode && position == mPosNewEntry) {
-                holder.textView.setText(
-                        (mResIdNewMsg == 0) ? "(New File)" : getText(mResIdNewMsg));
-                holder.imageView.setImageResource(mResIdNew);
+                holder.textView.setText(R.string.messageNewFile);
+                holder.imageView.setImageResource(R.drawable.ic_item_file_new);
             } else {
-                holder.textView.setText(file.getName());
-                holder.imageView.setImageResource(file.isDirectory() ? mResIdDir : mResIdFile);
+                String fileName = file.getName();
+                holder.textView.setText(fileName);
+                int iconId = R.drawable.ic_item_file_eeprom;
+                if (file.isDirectory()) {
+                    iconId = R.drawable.ic_item_folder;
+                } else {
+                    int index = fileName.lastIndexOf(".");
+                    String extension = null;
+                    if (index >= 0) {
+                        extension = fileName.substring(index).toLowerCase(Locale.getDefault());
+                        if (AvrTask.EXT_ARDUBOY.equals(extension)) {
+                            iconId = R.drawable.ic_item_file_arduboy;
+                        } else if (AvrTask.EXT_HEX.equals(extension)) {
+                            iconId = R.drawable.ic_item_file_hex;
+                        } else if (AvrTask.EXT_EEPROM.equals(extension)) {
+                            iconId = R.drawable.ic_item_file_eeprom;
+                        }
+                    }
+                }
+                holder.imageView.setImageResource(iconId);
             }
             return convertView;
         }
@@ -248,13 +262,6 @@ public class FilePickerActivity extends ListActivity {
     }
 
     /*-----------------------------------------------------------------------*/
-
-    public void setResourceId(int dirId, int fileId, int newId, int newMsgId) {
-        if (dirId != 0)     mResIdDir = dirId;
-        if (fileId != 0)    mResIdFile = fileId;
-        if (newId != 0)     mResIdNew = newId;
-        if (newMsgId != 0)  mResIdNewMsg = newMsgId;
-    }
 
     public void setCurrentDirectory(String path) {
         mDirCurrent = path;

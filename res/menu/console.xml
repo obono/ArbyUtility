@@ -3,13 +3,20 @@
     <item
         android:id="@+id/menuConsoleCaptureMode"
         android:title="@string/menuScreenCapture"
-        android:icon="@android:drawable/ic_menu_manage"
+        android:icon="@drawable/ic_menu_capture"
         android:showAsAction="ifRoom"
+        />
+    <item
+        android:id="@+id/menuConsoleMonitorMode"
+        android:title="@string/menuConsole"
+        android:icon="@drawable/ic_menu_console"
+        android:showAsAction="ifRoom"
+        android:visible="false"
         />
     <item
         android:id="@+id/menuConsoleClear"
         android:title="@string/menuSerialClear"
-        android:icon="@android:drawable/ic_menu_close_clear_cancel"
+        android:icon="@drawable/ic_menu_clear"
         android:showAsAction="always"
         />
 </menu>

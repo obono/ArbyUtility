@@ -139,21 +139,31 @@ public class ConsoleActivity extends Activity {
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        menu.findItem(R.id.menuConsoleCaptureMode).setVisible(!mIsScreenCapture);
+        menu.findItem(R.id.menuConsoleMonitorMode).setVisible(mIsScreenCapture);
+        return true;
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
         case android.R.id.home:
             finish();
             break;
         case R.id.menuConsoleCaptureMode:
-            mIsScreenCapture = !mIsScreenCapture;
-            if (mIsScreenCapture) {
-                clearConsoleBuffer();
-                mTextViewConsole.setVisibility(View.INVISIBLE);
-                mImageViewScreen.setVisibility(View.VISIBLE);
-            } else {
-                mTextViewConsole.setVisibility(View.VISIBLE);
-                mImageViewScreen.setVisibility(View.INVISIBLE);
-            }
+            mIsScreenCapture = true;
+            clearConsoleBuffer();
+            mTextViewConsole.setVisibility(View.INVISIBLE);
+            mImageViewScreen.setVisibility(View.VISIBLE);
+            invalidateOptionsMenu();
+            return true;
+        case R.id.menuConsoleMonitorMode:
+            mIsScreenCapture = false;
+            mTextViewConsole.setVisibility(View.VISIBLE);
+            mImageViewScreen.setVisibility(View.INVISIBLE);
+            invalidateOptionsMenu();
             return true;
         case R.id.menuConsoleClear:
             clearConsoleBuffer();
