@@ -140,22 +140,11 @@ public class FilePickerActivity extends ListActivity {
             } else {
                 String fileName = file.getName();
                 holder.textView.setText(fileName);
-                int iconId = R.drawable.ic_item_file_eeprom;
+                int iconId = 0;
                 if (file.isDirectory()) {
                     iconId = R.drawable.ic_item_folder;
                 } else {
-                    int index = fileName.lastIndexOf(".");
-                    String extension = null;
-                    if (index >= 0) {
-                        extension = fileName.substring(index).toLowerCase(Locale.getDefault());
-                        if (AvrTask.EXT_ARDUBOY.equals(extension)) {
-                            iconId = R.drawable.ic_item_file_arduboy;
-                        } else if (AvrTask.EXT_HEX.equals(extension)) {
-                            iconId = R.drawable.ic_item_file_hex;
-                        } else if (AvrTask.EXT_EEPROM.equals(extension)) {
-                            iconId = R.drawable.ic_item_file_eeprom;
-                        }
-                    }
+                    iconId = getIconIdFromFileName(fileName);
                 }
                 holder.imageView.setImageResource(iconId);
             }
@@ -221,7 +210,7 @@ public class FilePickerActivity extends ListActivity {
             onNewFileRequested(mDirCurrent, (mExtensions != null) ? mExtensions[0] : null);
         } else if (file.isDirectory()) {
             mStackPath.add(mDirCurrent);
-            setCurrentDirectory(file.getPath() + File.separator);
+            setCurrentDirectory(file.getPath().concat(File.separator));
         } else {
             onFileSelected(file.getPath());
         }
@@ -252,7 +241,9 @@ public class FilePickerActivity extends ListActivity {
             finish();
             break;
         case R.id.menuFilePickerBack:
-            onBackPressed();
+            if (!mStackPath.isEmpty()) {
+                onBackPressed();
+            }
             return true;
         case R.id.menuFilePickerGoUpper:
             goToUpperDirectory();
@@ -303,7 +294,7 @@ public class FilePickerActivity extends ListActivity {
                 if (extension != null && !newPath.endsWith(extension)) {
                     newPath = newPath.concat(extension);
                 }
-                if ((new File(newPath)).exists()) {
+                if (new File(newPath).exists()) {
                     onFileSelected(newPath);
                 } else {
                     setResultAndFinish(newPath);
@@ -354,12 +345,7 @@ public class FilePickerActivity extends ListActivity {
         if (mDirCurrent.equals(mDirTop)) {
             return null;
         }
-        int start = mDirCurrent.length() - 1;
-        if (mDirCurrent.endsWith(File.separator)) {
-            start--;
-        }
-        int index = mDirCurrent.lastIndexOf(File.separatorChar, start);
-        return (index >= 0) ? mDirCurrent.substring(0, index + 1) : null;
+        return new File(mDirCurrent).getParent().concat(File.separator);
     }
 
     public void setResultAndFinish(String path) {
@@ -367,6 +353,23 @@ public class FilePickerActivity extends ListActivity {
         intent.putExtra(INTENT_EXTRA_SELECTPATH, path);
         setResult(RESULT_OK, intent);
         finish();
+    }
+
+    public static int getIconIdFromFileName(String fileName) {
+        int ret = 0;
+        int index = fileName.lastIndexOf('.');
+        if (index >= 0) {
+            String extension =
+                    fileName.substring(index).toLowerCase(Locale.getDefault());
+            if (AvrTask.EXT_ARDUBOY.equals(extension)) {
+                ret = R.drawable.ic_item_file_arduboy;
+            } else if (AvrTask.EXT_HEX.equals(extension)) {
+                ret = R.drawable.ic_item_file_hex;
+            } else if (AvrTask.EXT_EEPROM.equals(extension)) {
+                ret = R.drawable.ic_item_file_eeprom;
+            }
+        }
+        return ret;
     }
 
     /*-----------------------------------------------------------------------*/

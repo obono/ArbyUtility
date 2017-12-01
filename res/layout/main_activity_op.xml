@@ -30,11 +30,19 @@
         android:layout_toLeftOf="@id/buttonPickFile"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
+    <ImageView
+        android:id="@+id/imageViewFileIcon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_toRightOf="@id/toggleButton"
+        android:layout_below="@id/textViewOperation"
+        android:layout_alignBottom="@id/buttonPickFile" />
+
     <TextView
         android:id="@+id/textViewFileName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/toggleButton"
+        android:layout_toRightOf="@id/imageViewFileIcon"
         android:layout_toLeftOf="@id/buttonPickFile"
         android:layout_below="@id/textViewOperation"
         android:textAppearance="?android:attr/textAppearanceSmall" />

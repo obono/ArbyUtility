@@ -17,19 +17,24 @@ import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
 public class MainActivity extends Activity {
+
+    private static final String PREFS_KEY_LAST_FLASH_NAME = "last_flash_name";
 
     private static final String[] SUPPORT_EXTENSIONS_DOWNLOAD_FLASH =
             new String[] { AvrTask.EXT_HEX };
@@ -38,7 +43,18 @@ public class MainActivity extends Activity {
     private static final String[] SUPPORT_EXTENSIONS_EEPROM =
             new String[] { AvrTask.EXT_EEPROM, AvrTask.EXT_HEX };
 
+    private static final int OP_DOWNLOAD_FLASH_IDX  = 0;
+    private static final int OP_DOWNLOAD_EEPROM_IDX = 1;
+    private static final int OP_UPLOAD_FLASH_IDX    = 2;
+    private static final int OP_UPLOAD_EEPROM_IDX   = 3;
+
+    private static final int BAUD_RATE_SWITCH_AVR = 1200;
+    private static final int WAIT_RESTART_TIMEOUT = 10 * 1000; // 10 seconds
+
+    private MyApplication   mApp;
     private Physicaloid     mPhysicaloid;
+    private Handler         mHandler;
+    private Runnable        mRunnbaleWaitRestart;
     private boolean         mIsExecuting = false;
 
     private OperationInfo[] mOperationInfos;
@@ -57,6 +73,7 @@ public class MainActivity extends Activity {
         private Button          mButtonPickFile;
         private TextView        mTextViewOperation;
         private TextView        mTextViewFilename;
+        private ImageView       mImageViewFileIcon;
         private AvrTask.Op      mOperation;
         private boolean         mIsActive;
         private String          mFilePath;
@@ -69,6 +86,7 @@ public class MainActivity extends Activity {
             mButtonPickFile = (Button) parentView.findViewById(R.id.buttonPickFile);
             mTextViewOperation = (TextView) parentView.findViewById(R.id.textViewOperation);
             mTextViewFilename = (TextView) parentView.findViewById(R.id.textViewFileName);
+            mImageViewFileIcon = (ImageView) parentView.findViewById(R.id.imageViewFileIcon);
 
             mOperation = operation;
             mSupportExtentions = supportExtentions;
@@ -109,13 +127,22 @@ public class MainActivity extends Activity {
                         Op.UPLOAD_EEPROM, SUPPORT_EXTENSIONS_EEPROM)
         };
 
-        mPhysicaloid = ((MyApplication) getApplication()).getPhysicaloidInstance();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String baseName = prefs.getString(PREFS_KEY_LAST_FLASH_NAME, null);
+        if (baseName != null) {
+            setDefaultOperationFilePath(baseName);
+        }
+
+        mApp = (MyApplication) getApplication();
+        mPhysicaloid = mApp.getPhysicaloidInstance();
         Intent intent = getIntent();
         if (intent != null) {
             handleIntent(intent);
         }
         controlUiAvalability();
         registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
+
+        mHandler = new Handler();
     }
 
     @Override
@@ -144,12 +171,14 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        for (OperationInfo info : mOperationInfos) {
-            if (requestCode == info.hashCode()) {
-                info.mFilePath = (resultCode == RESULT_OK) ?
-                        data.getStringExtra(FilePickerActivity.INTENT_EXTRA_SELECTPATH) : null;
-                controlUiAvalability();
+        if (resultCode == RESULT_OK) {
+            for (OperationInfo info : mOperationInfos) {
+                if (requestCode == info.hashCode()) {
+                    setOperationFilePath(info,
+                            data.getStringExtra(FilePickerActivity.INTENT_EXTRA_SELECTPATH));
+                }
             }
+            controlUiAvalability();
         }
     }
 
@@ -159,6 +188,7 @@ public class MainActivity extends Activity {
         mPhysicaloid.clearReadListener();
         mPhysicaloid.close();
         Utils.cleanCacheFiles(this);
+        mApp.releaseWakeLock();
         super.onDestroy();
     }
 
@@ -168,17 +198,31 @@ public class MainActivity extends Activity {
         OperationInfo info = (OperationInfo) ((View) v.getParent()).getTag();
         AvrTask.Op operation = info.mOperation;
         boolean isOut = (operation == Op.DOWNLOAD_FLASH || operation == Op.DOWNLOAD_EEPROM);
+        boolean isFlash = (operation == Op.DOWNLOAD_FLASH || operation == Op.UPLOAD_FLASH);
         Intent intent = new Intent(this, FilePickerActivity.class);
         intent.putExtra(FilePickerActivity.INTENT_EXTRA_EXTENSIONS, info.mSupportExtentions);
         intent.putExtra(FilePickerActivity.INTENT_EXTRA_WRITEMODE, isOut);
+        intent.putExtra(FilePickerActivity.INTENT_EXTRA_DIRECTORY,
+                (isFlash ? Utils.FLASH_DIRECTORY : Utils.EEPROM_DIRECTORY).getPath());
         startActivityForResult(intent, info.hashCode());
     }
 
     public void onClickExecute(View v) {
         if (mPhysicaloid.isOpened() || mPhysicaloid.open()) {
-            mPhysicaloid.setBaudrate(1200); // Switch Arduboy to AVR mode
-            mPhysicaloid.close();
+            mApp.acquireWakeLock();
             mIsExecuting = true;
+            mPhysicaloid.setBaudrate(BAUD_RATE_SWITCH_AVR); // Switch Arduboy to AVR mode
+            mPhysicaloid.close();
+            mRunnbaleWaitRestart = new Runnable() {
+                @Override
+                public void run() {
+                    mApp.releaseWakeLock();
+                    mIsExecuting = false;
+                    Utils.showToast(MainActivity.this, R.string.messageDeviceSwitchFailed);
+                    controlUiAvalability();
+                }
+            };
+            mHandler.postDelayed(mRunnbaleWaitRestart, WAIT_RESTART_TIMEOUT);
         } else {
             Utils.showToast(this, R.string.messageDeviceOpenFailed);
             mIsExecuting = false;
@@ -192,13 +236,15 @@ public class MainActivity extends Activity {
         String action = intent.getAction();
         if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
             if (mIsExecuting) {
+                mHandler.removeCallbacks(mRunnbaleWaitRestart);
                 executeOperations();
             }
         } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
             mPhysicaloid.clearReadListener();
             mPhysicaloid.close();
         } else if (Intent.ACTION_VIEW.equals(action)) {
-            mOperationInfos[2].mFilePath = Utils.getPathFromUri(this, intent.getData());
+            mOperationInfos[OP_UPLOAD_FLASH_IDX].mFilePath =
+                    Utils.getPathFromUri(this, intent.getData());
             controlUiAvalability();
         }
     }
@@ -213,13 +259,19 @@ public class MainActivity extends Activity {
             info.mToggleButton.setEnabled(enabled && !mIsExecuting);
             info.mButtonPickFile.setEnabled(enabled && !mIsExecuting);
             info.mTextViewOperation.setEnabled(enabled);
-            info.mTextViewFilename.setEnabled(enabled);
 
             String filePath = info.mFilePath;
             if (filePath != null) {
-                info.mTextViewFilename.setText((new File(filePath)).getName());
+                String fileName = new File(filePath).getName();
+                info.mTextViewFilename.setText(fileName);
+                info.mTextViewFilename.setEnabled(enabled);
+                info.mImageViewFileIcon.setVisibility(View.VISIBLE);
+                info.mImageViewFileIcon.setImageResource(
+                        FilePickerActivity.getIconIdFromFileName(fileName));
             } else {
                 info.mTextViewFilename.setText(R.string.textViewFileNotSpecified);
+                info.mTextViewFilename.setEnabled(false);
+                info.mImageViewFileIcon.setVisibility(View.GONE);
             }
 
             isAnyEnabled = isAnyEnabled || enabled;
@@ -234,6 +286,29 @@ public class MainActivity extends Activity {
 
     /*-----------------------------------------------------------------------*/
 
+    private void setDefaultOperationFilePath(String baseName) {
+        mOperationInfos[OP_DOWNLOAD_FLASH_IDX].mFilePath =
+                new File(Utils.FLASH_DIRECTORY, baseName.concat(AvrTask.EXT_HEX)).getPath();
+        mOperationInfos[OP_DOWNLOAD_EEPROM_IDX].mFilePath =
+                new File(Utils.EEPROM_DIRECTORY, baseName.concat(AvrTask.EXT_EEPROM)).getPath();
+    }
+
+    private void setOperationFilePath(OperationInfo info, String filePath) {
+        info.mFilePath = filePath;
+        Op opration = info.mOperation;
+        if (opration == Op.DOWNLOAD_EEPROM || opration == Op.UPLOAD_EEPROM) {
+            return;
+        }
+        String baseName = Utils.getBaseFileName(filePath);
+        File suggestFile = new File(Utils.EEPROM_DIRECTORY, baseName.concat(AvrTask.EXT_EEPROM));
+        String suggestFilePath = suggestFile.getPath();
+        if (opration == Op.DOWNLOAD_FLASH) {
+            mOperationInfos[OP_DOWNLOAD_EEPROM_IDX].mFilePath = suggestFilePath;
+        } else if (opration == Op.UPLOAD_FLASH && suggestFile.exists()) {
+            mOperationInfos[OP_UPLOAD_EEPROM_IDX].mFilePath = suggestFilePath;
+        }
+    }
+
     private void executeOperations() {
         final ArrayList<AvrTask> operations = new ArrayList<AvrTask>();
         try {
@@ -246,12 +321,12 @@ public class MainActivity extends Activity {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             Utils.showToast(MainActivity.this, R.string.messageExecutingFileNotFound);
+            mApp.releaseWakeLock();
             mIsExecuting = false;
             controlUiAvalability();
             return;
         }
 
-        final Handler handler = new Handler();
         MyAsyncTaskWithDialog.ITask task = new MyAsyncTaskWithDialog.ITask() {
             private AvrTask.Op  mCurrentOperation = null;
             private String      mErrorMessage = null;
@@ -288,7 +363,7 @@ public class MainActivity extends Activity {
                                 break;
                             }
                             if (resId != 0) {
-                                handler.post(new Runnable() {
+                                mHandler.post(new Runnable() {
                                     @Override
                                     public void run() {
                                         dialog.setMessage(getText(resId));
@@ -308,7 +383,7 @@ public class MainActivity extends Activity {
                     @Override
                     public void onPostProcess(boolean success) {
                         if (!success && mErrorMessage == null) {
-                            mErrorMessage = "Operation(s) was failed";
+                            mErrorMessage = getString(R.string.messageExecutingFailedDefault);
                         }
                     }
                 };
@@ -328,8 +403,19 @@ public class MainActivity extends Activity {
             public void post(Result result) {
                 switch (result) {
                 case SUCCEEDED:
+                    String baseName = null;
                     for (OperationInfo info : mOperationInfos) {
-                        info.mFilePath = null;
+                        if (info.mIsActive) {
+                            if (info.mOperation == Op.UPLOAD_FLASH) {
+                                baseName = Utils.getBaseFileName(info.mFilePath);
+                            }
+                            info.mIsActive = false;
+                            info.mFilePath = null;
+                        }
+                    }
+                    if (baseName != null) {
+                        commitLastFlashName(baseName);
+                        setDefaultOperationFilePath(baseName);
                     }
                     Utils.showToast(MainActivity.this, R.string.messageExecutingCompleted);
                     break;
@@ -344,12 +430,20 @@ public class MainActivity extends Activity {
                 case CANCELLED:
                     break;
                 }
+                mApp.releaseWakeLock();
                 mIsExecuting = false;
                 controlUiAvalability();
             }
         };
 
         MyAsyncTaskWithDialog.execute(this, R.string.messageExecutingPrepare, task);
+    }
+
+    private void commitLastFlashName(String baseName) {
+        SharedPreferences.Editor editor =
+                PreferenceManager.getDefaultSharedPreferences(this).edit();
+        editor.putString(PREFS_KEY_LAST_FLASH_NAME, baseName);
+        editor.commit();
     }
 
 }

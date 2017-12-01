@@ -17,29 +17,28 @@
         android:entries="@array/baudRateArray" />
 
     <Spinner
-        android:id="@+id/spinnerWriteWith"
+        android:id="@+id/spinnerNewLine"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_toRightOf="@id/spinnerBaudRate"
         android:layout_alignParentTop="true"
-        android:entries="@array/writeWithArray" />
+        android:entries="@array/newLineArray" />
 
     <CheckBox
-        android:id="@+id/checkBoxConsoleEcho"
+        android:id="@+id/checkBoxEcho"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/spinnerWriteWith"
+        android:layout_toRightOf="@id/spinnerNewLine"
         android:layout_alignParentTop="true"
-        android:text="@string/checkBoxConsoleEcho" />
+        android:text="@string/checkBoxEcho" />
 
     <CheckBox
-        android:id="@+id/checkBoxConsoleScroll"
+        android:id="@+id/checkBoxScroll"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/checkBoxConsoleEcho"
+        android:layout_toRightOf="@id/checkBoxEcho"
         android:layout_alignParentTop="true"
-        android:checked="true"
-        android:text="@string/checkBoxConsoleScroll" />
+        android:text="@string/checkBoxScroll" />
 
     <ScrollView
         android:id="@+id/scrollViewConsole"

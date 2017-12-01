@@ -21,6 +21,7 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Environment;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,6 +33,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class Utils {
+
+    public static final File TOP_DIRECTORY =
+            new File(Environment.getExternalStorageDirectory(), "ArduboyUtility");
+    public static final File FLASH_DIRECTORY = new File(TOP_DIRECTORY, "Flash");
+    public static final File EEPROM_DIRECTORY = new File(TOP_DIRECTORY, "EEPROM");
+
+    private static final String SCHEME_FILE = "file";
+    private static final String SCHEME_CONTENT = "content";
+    private static final String SCHEME_ARDUBOY = "arduboy";
 
     private static final int BUFFER_SIZE = 1024 * 1024;
 
@@ -82,12 +92,26 @@ public class Utils {
         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
     }
 
+    /*-----------------------------------------------------------------------*/
+
+    public static void generateFolders() {
+        TOP_DIRECTORY.mkdir();
+        FLASH_DIRECTORY.mkdir();
+        EEPROM_DIRECTORY.mkdir();
+    }
+
+    public static String getBaseFileName(String filePath) {
+        String fileName = new File(filePath).getName();
+        int index = fileName.lastIndexOf('.');
+        return (index >= 0) ? fileName.substring(0, index) : fileName;
+    }
+
     public static String getPathFromUri(final Context context, final Uri uri) {
-        if ("file".equalsIgnoreCase(uri.getScheme())) {
+        if (SCHEME_FILE.equalsIgnoreCase(uri.getScheme())) {
             return uri.getPath();
-        } else if ("content".equalsIgnoreCase(uri.getScheme())) {
+        } else if (SCHEME_CONTENT.equalsIgnoreCase(uri.getScheme())) {
             return generateTempFile(context, uri, false);
-        } else if ("arduboy".equalsIgnoreCase(uri.getScheme())) {
+        } else if (SCHEME_ARDUBOY.equalsIgnoreCase(uri.getScheme())) {
             return generateTempFile(context, Uri.parse(uri.getEncodedSchemeSpecificPart()), true);
         }
         return null;
@@ -151,6 +175,8 @@ public class Utils {
             file.delete();
         }
     }
+
+    /*-----------------------------------------------------------------------*/
 
     public static void showVersion(Context context) {
         LayoutInflater inflater = LayoutInflater.from(context);

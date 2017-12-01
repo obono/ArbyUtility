@@ -127,6 +127,17 @@ public class Physicaloid {
     }
 
     /**
+     * Clear buffer
+     * @throws RuntimeException
+     */
+    public void clearBuffer() throws RuntimeException {
+        synchronized (LOCK_READ) {
+            if(mSerial == null) return;
+            mSerial.clearBuffer();
+        }
+    }
+
+    /**
      * Adds read listener
      * @param listener ReadListener
      * @return true : successful , false : fail

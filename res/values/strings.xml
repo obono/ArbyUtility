@@ -11,8 +11,8 @@
     <string name="buttonCancel">Cancel</string>
     <string name="buttonWrite">Write</string>
     <string name="buttonPickFile">&#8230;</string>
-    <string name="checkBoxConsoleEcho">Echo</string>
-    <string name="checkBoxConsoleScroll">Scroll</string>
+    <string name="checkBoxEcho">Echo</string>
+    <string name="checkBoxScroll">Scroll</string>
     <string name="textViewOprationDownloadFlash">Backup Flash</string>
     <string name="textViewOprationDownloadEeprom">Backup EEPROM</string>
     <string name="textViewOprationUploadFlash">Upload Flash</string>
@@ -31,6 +31,7 @@
     <string name="messageDownloading">Downloading&#8230;</string>
     <string name="messageDownloadFailed">Failed to download</string>
     <string name="messageDeviceOpenFailed">Failed to connect to Arduboy</string>
+    <string name="messageDeviceSwitchFailed">Failed to start bootloader</string>
     <string name="messageExecutingFileNotFound">File(s) not found</string>
     <string name="messageExecutingPrepare">Preparing&#8230;</string>
     <string name="messageExecutingDownloadFlash">Backuping Flash&#8230;</string>
@@ -39,5 +40,6 @@
     <string name="messageExecutingUploadEeprom">Uploading EEPROM&#8230;</string>
     <string name="messageExecutingCompleted">Completed !!</string>
     <string name="messageExecutingFailed">Error: </string>
+    <string name="messageExecutingFailedDefault">Operation(s) was failed</string>
     <string name="messageExecutingFailedUnknwon">Unknown Error!</string>
 </resources>

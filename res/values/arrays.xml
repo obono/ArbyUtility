@@ -13,7 +13,7 @@
         <item>230400</item>
     </string-array>
 
-    <string-array name="writeWithArray">
+    <string-array name="newLineArray">
         <item>CR</item>
         <item>LF</item>
         <item>CRLF</item>
