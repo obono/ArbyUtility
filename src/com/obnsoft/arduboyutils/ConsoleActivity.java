@@ -10,8 +10,6 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,44 +17,31 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
-import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 public class ConsoleActivity extends Activity {
 
-    private static final String[] WRITE_WITH_CHAR_LIST = { null, "\r", "\n", "\r\n" };
-    private static final int DEVICE_SCREEN_WIDTH = 128;
-    private static final int DEVICE_SCREEN_HEIGHT = 64;
-    private static final int BITS_PER_BYTE = 8;
-    private static final int DEVICE_SCREEN_BUFFER_SIZE =
-            DEVICE_SCREEN_WIDTH * DEVICE_SCREEN_HEIGHT / BITS_PER_BYTE;
+    private static final byte[][] WRITE_WITH_CHAR_LIST = {
+            new byte[] { '\r' }, new byte[] { '\n' }, new byte[] { '\r', '\n' } };
 
     private Physicaloid mPhysicaloid;
 
-    private Button      mButtonWrite;
-    private EditText    mEditTextWrite;
     private ScrollView  mScrollView;
     private TextView    mTextViewConsole;
     private Spinner     mSpinnerBaudRate;
     private Spinner     mSpinnerWriteWith;
     private CheckBox    mCheckBoxConsoleEcho;
     private CheckBox    mCheckBoxConsoleScroll;
-    private ImageView   mImageViewScreen;
+    private CaptureView mCaptureView;
 
     private int         mBaudRateItemIdx = 2;
-    private String      mWriteWithChar;
+    private int         mWriteWithItemIdx = 1;
     private boolean     mIsScreenCapture;
-    private Bitmap      mBitmapScreen;
-    private byte[]      mBitmapBuffer = new byte[DEVICE_SCREEN_BUFFER_SIZE];
-    private int         mBitmapBufferPos;
 
     private Handler     mHandler = new Handler();
     private BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
@@ -75,27 +60,14 @@ public class ConsoleActivity extends Activity {
         super.onCreate(savedInstanceState);
         getActionBar().setDisplayHomeAsUpEnabled(true);
         setContentView(R.layout.console_activity);
-        mButtonWrite = (Button) findViewById(R.id.buttonWrite);
-        mEditTextWrite = (EditText) findViewById(R.id.editTextWrite);
         mScrollView = (ScrollView) findViewById(R.id.scrollViewConsole);
         mTextViewConsole = (TextView) findViewById(R.id.textViewConsole);
         mSpinnerBaudRate = (Spinner) findViewById(R.id.spinnerBaudRate);
         mSpinnerWriteWith = (Spinner) findViewById(R.id.spinnerWriteWith);
         mCheckBoxConsoleEcho = (CheckBox) findViewById(R.id.checkBoxConsoleEcho);
         mCheckBoxConsoleScroll = (CheckBox) findViewById(R.id.checkBoxConsoleScroll);
-        mImageViewScreen = (ImageView) findViewById(R.id.imageViewSceeen);
+        mCaptureView = (CaptureView) findViewById(R.id.screenCaptureView);
 
-        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-        mEditTextWrite.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    onClickWrite(v);
-                    return true;
-                }
-                return false;
-            }
-        });
         mSpinnerBaudRate.setSelection(mBaudRateItemIdx);
         mSpinnerBaudRate.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -110,23 +82,21 @@ public class ConsoleActivity extends Activity {
                 // do nothing
             }
         });
+        mSpinnerWriteWith.setSelection(mWriteWithItemIdx);
         mSpinnerWriteWith.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                mWriteWithChar = WRITE_WITH_CHAR_LIST[position];
+                mWriteWithItemIdx = position;
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 // do nothing
             }
         });
-        mBitmapScreen = Bitmap.createBitmap(128, 64, Bitmap.Config.RGB_565);
-        mImageViewScreen.setImageBitmap(mBitmapScreen);
 
         mPhysicaloid = ((MyApplication) getApplication()).getPhysicaloidInstance();
         registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
         if (!openDevice()) {
-            mButtonWrite.setEnabled(false);
             Utils.showToast(this, R.string.messageDeviceOpenFailed);
             finish();
         }
@@ -156,14 +126,21 @@ public class ConsoleActivity extends Activity {
             mIsScreenCapture = true;
             clearConsoleBuffer();
             mTextViewConsole.setVisibility(View.INVISIBLE);
-            mImageViewScreen.setVisibility(View.VISIBLE);
+            mCaptureView.setVisibility(View.VISIBLE);
             invalidateOptionsMenu();
             return true;
         case R.id.menuConsoleMonitorMode:
             mIsScreenCapture = false;
             mTextViewConsole.setVisibility(View.VISIBLE);
-            mImageViewScreen.setVisibility(View.INVISIBLE);
+            mCaptureView.setVisibility(View.INVISIBLE);
             invalidateOptionsMenu();
+            return true;
+        case R.id.menuConsoleKeyboard:
+            InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(
+                    Context.INPUT_METHOD_SERVICE);
+            inputMethodManager.toggleSoftInputFromWindow(
+                    mTextViewConsole.getApplicationWindowToken(), InputMethodManager.SHOW_IMPLICIT,
+                    0);
             return true;
         case R.id.menuConsoleClear:
             clearConsoleBuffer();
@@ -173,28 +150,30 @@ public class ConsoleActivity extends Activity {
     }
 
     @Override
-    protected void onDestroy() {
-        unregisterReceiver(mUsbReceiver);
-        closeDevice();
-        mBitmapScreen.recycle();
-        super.onDestroy();
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        int code = event.getUnicodeChar();
+        byte[] buf = null;
+        if (code == 0x0a) {
+            buf = WRITE_WITH_CHAR_LIST[mWriteWithItemIdx];
+        } else if (code > 0x00 && code <= 0xff) {
+            buf = new byte[] { (byte) code };
+        }
+        if (buf != null) {
+            mPhysicaloid.write(buf, buf.length);
+            if (!mIsScreenCapture && mCheckBoxConsoleEcho.isChecked()) {
+                appendMessage(String.valueOf((char) code));
+            }
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
-    /*-----------------------------------------------------------------------*/
-
-    public void onClickWrite(View v) {
-        String str = mEditTextWrite.getText().toString();
-        if (mWriteWithChar != null) {
-            str = str.concat(mWriteWithChar);
-        }
-        if (str.length() > 0) {
-            if (mCheckBoxConsoleEcho.isChecked()) {
-                appendMessage(str);
-            }
-            byte[] buf = str.getBytes();
-            mPhysicaloid.write(buf, buf.length);
-            mEditTextWrite.setText(null);
-        }
+    @Override
+    protected void onDestroy() {
+        mCaptureView.onDestroy();
+        unregisterReceiver(mUsbReceiver);
+        closeDevice();
+        super.onDestroy();
     }
 
     /*-----------------------------------------------------------------------*/
@@ -214,7 +193,7 @@ public class ConsoleActivity extends Activity {
                 byte[] buf = new byte[size];
                 mPhysicaloid.read(buf, size);
                 if (mIsScreenCapture) {
-                    appendScreenBuffer(buf);
+                    mCaptureView.appendData(buf);
                 } else {
                     try {
                         appendMessage(new String(buf, "ISO-8859-1"));
@@ -247,38 +226,9 @@ public class ConsoleActivity extends Activity {
         });
     }
 
-    private void appendScreenBuffer(byte[] data) {
-        int dataSize = data.length;
-        for (int dataPos = 0; dataPos < dataSize; ) {
-            int size = Math.min(dataSize - dataPos, DEVICE_SCREEN_BUFFER_SIZE - mBitmapBufferPos);
-            System.arraycopy(data, dataPos, mBitmapBuffer, mBitmapBufferPos, size);
-            mBitmapBufferPos += size;
-            if (mBitmapBufferPos == DEVICE_SCREEN_BUFFER_SIZE) {
-                updateScreenImage();
-                mBitmapBufferPos = 0;
-            }
-            dataPos += size;
-        }
-    }
-
-    private void updateScreenImage() {
-        int pos = 0;
-        for (int dy = 0; dy < DEVICE_SCREEN_HEIGHT; dy += BITS_PER_BYTE) {
-            for (int x = 0; x < DEVICE_SCREEN_WIDTH; x++) {
-                int val = mBitmapBuffer[pos++];
-                for (int y = 0; y < BITS_PER_BYTE; y++) {
-                    int color = ((val & 1) != 0) ? Color.WHITE : Color.BLACK;
-                    mBitmapScreen.setPixel(x, dy + y, color);
-                    val >>= 1;
-                }
-            }
-        }
-        mImageViewScreen.postInvalidate();
-    }
-
     private void clearConsoleBuffer() {
         mTextViewConsole.setText(null);
-        mBitmapBufferPos = 0;
+        mCaptureView.reset();
     }
 
 }

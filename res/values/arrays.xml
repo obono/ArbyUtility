@@ -14,7 +14,6 @@
     </string-array>
 
     <string-array name="writeWithArray">
-        <item>None</item>
         <item>CR</item>
         <item>LF</item>
         <item>CRLF</item>

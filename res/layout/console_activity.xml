@@ -41,28 +41,6 @@
         android:checked="true"
         android:text="@string/checkBoxConsoleScroll" />
 
-    <Button
-        android:id="@+id/buttonWrite"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:onClick="onClickWrite"
-        android:text="@string/buttonWrite" />
-
-    <EditText
-        android:id="@+id/editTextWrite"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/buttonWrite"
-        android:layout_alignParentLeft="true"
-        android:layout_toLeftOf="@id/buttonWrite"
-        android:typeface="monospace"
-        android:inputType="text|textUri"
-        android:ems="10" >
-        <requestFocus />
-    </EditText>
-
     <ScrollView
         android:id="@+id/scrollViewConsole"
         android:layout_width="wrap_content"
@@ -71,7 +49,7 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
         android:layout_below="@id/spinnerBaudRate"
-        android:layout_above="@id/buttonWrite" >
+        android:layout_alignParentBottom="true" >
         <TextView
             android:id="@+id/textViewConsole"
             android:layout_width="wrap_content"
@@ -79,14 +57,14 @@
             android:typeface="monospace" />
     </ScrollView>
 
-    <ImageView 
-        android:id="@+id/imageViewSceeen"
+    <com.obnsoft.arduboyutils.CaptureView
+        android:id="@+id/screenCaptureView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/spinnerBaudRate"
-        android:layout_above="@id/buttonWrite"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
+        android:layout_below="@id/spinnerBaudRate"
+        android:layout_alignParentBottom="true"
         android:visibility="invisible" />
 
 </RelativeLayout>

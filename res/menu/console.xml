@@ -14,8 +14,14 @@
         android:visible="false"
         />
     <item
+        android:id="@+id/menuConsoleKeyboard"
+        android:title="@string/menuKeyboard"
+        android:icon="@drawable/ic_menu_keyboard"
+        android:showAsAction="ifRoom"
+        />
+    <item
         android:id="@+id/menuConsoleClear"
-        android:title="@string/menuSerialClear"
+        android:title="@string/menuClear"
         android:icon="@drawable/ic_menu_clear"
         android:showAsAction="always"
         />

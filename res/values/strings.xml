@@ -23,7 +23,8 @@
     <string name="menuUpper">Upper</string>
     <string name="menuBack">Back</string>
     <string name="menuScreenCapture">Screen capture</string>
-    <string name="menuSerialClear">Clear</string>
+    <string name="menuKeyboard">Keyboard</string>
+    <string name="menuClear">Clear</string>
     <string name="messageNoFiles">No files</string>
     <string name="messageInvalid">Invalid file name</string>
     <string name="messageNewFile">New file</string>
