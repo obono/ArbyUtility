@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.obnsoft.arduboyutils"
+    package="com.obnsoft.arduboyutil"
     android:versionCode="9"
     android:versionName="0.0.9" >
 
@@ -16,14 +16,14 @@
     <uses-feature android:name="android.hardware.usb.host" />
 
     <application
-        android:name="com.obnsoft.arduboyutils.MyApplication"
+        android:name="com.obnsoft.arduboyutil.MyApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/appName"
         android:theme="@style/AppTheme" >
 
         <activity
-            android:name="com.obnsoft.arduboyutils.MainActivity"
+            android:name="com.obnsoft.arduboyutil.MainActivity"
             android:label="@string/appName"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden" >
@@ -61,11 +61,11 @@
         </activity>
 
         <activity
-            android:name="com.obnsoft.arduboyutils.FilePickerActivity"
+            android:name="com.obnsoft.arduboyutil.FilePickerActivity"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden" />
 
         <activity
-            android:name="com.obnsoft.arduboyutils.ConsoleActivity"
+            android:name="com.obnsoft.arduboyutil.ConsoleActivity"
             android:label="@string/appNameConsole"
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden" />

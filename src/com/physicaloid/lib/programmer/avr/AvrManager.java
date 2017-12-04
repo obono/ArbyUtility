@@ -32,7 +32,7 @@ package com.physicaloid.lib.programmer.avr;
 
 import android.util.Log;
 
-import com.obnsoft.arduboyutils.BuildConfig;
+import com.obnsoft.arduboyutil.BuildConfig;
 import com.physicaloid.lib.Boards;
 import com.physicaloid.lib.Physicaloid.ProcessCallBack;
 import com.physicaloid.lib.framework.SerialCommunicator;

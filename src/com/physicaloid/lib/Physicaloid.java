@@ -22,7 +22,7 @@ package com.physicaloid.lib;
 import android.content.Context;
 import android.util.Log;
 
-import com.obnsoft.arduboyutils.BuildConfig;
+import com.obnsoft.arduboyutil.BuildConfig;
 import com.physicaloid.lib.framework.AutoCommunicator;
 import com.physicaloid.lib.framework.SerialCommunicator;
 import com.physicaloid.lib.programmer.avr.AvrManager;

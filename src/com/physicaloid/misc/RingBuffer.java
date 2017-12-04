@@ -19,7 +19,7 @@
 
 package com.physicaloid.misc;
 
-import com.obnsoft.arduboyutils.BuildConfig;
+import com.obnsoft.arduboyutil.BuildConfig;
 
 import android.util.Log;
 

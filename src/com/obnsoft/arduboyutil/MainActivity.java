@@ -1,10 +1,10 @@
-package com.obnsoft.arduboyutils;
+package com.obnsoft.arduboyutil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
-import com.obnsoft.arduboyutils.MyAsyncTaskWithDialog.Result;
+import com.obnsoft.arduboyutil.MyAsyncTaskWithDialog.Result;
 import com.physicaloid.lib.Boards;
 import com.physicaloid.lib.Physicaloid;
 import com.physicaloid.lib.Physicaloid.ProcessCallBack;

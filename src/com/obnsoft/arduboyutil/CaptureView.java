@@ -1,4 +1,4 @@
-package com.obnsoft.arduboyutils;
+package com.obnsoft.arduboyutil;
 
 import android.content.Context;
 import android.graphics.Bitmap;

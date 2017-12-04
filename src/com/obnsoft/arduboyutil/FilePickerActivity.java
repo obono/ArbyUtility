@@ -17,7 +17,7 @@
  * This source code was modified by OBONO in November 2017.
  */
 
-package com.obnsoft.arduboyutils;
+package com.obnsoft.arduboyutil;
 
 import java.io.File;
 import java.io.FileFilter;

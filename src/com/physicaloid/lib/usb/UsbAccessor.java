@@ -16,7 +16,7 @@
 
 package com.physicaloid.lib.usb;
 
-import com.obnsoft.arduboyutils.BuildConfig;
+import com.obnsoft.arduboyutil.BuildConfig;
 
 import android.app.PendingIntent;
 import android.content.Context;

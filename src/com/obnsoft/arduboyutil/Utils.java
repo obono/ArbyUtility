@@ -1,4 +1,4 @@
-package com.obnsoft.arduboyutils;
+package com.obnsoft.arduboyutil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,7 +12,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import com.obnsoft.arduboyutils.MyAsyncTaskWithDialog.Result;
+import com.obnsoft.arduboyutil.MyAsyncTaskWithDialog.Result;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;

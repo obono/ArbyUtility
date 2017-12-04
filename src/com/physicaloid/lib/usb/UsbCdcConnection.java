@@ -19,7 +19,7 @@
 
 package com.physicaloid.lib.usb;
 
-import com.obnsoft.arduboyutils.BuildConfig;
+import com.obnsoft.arduboyutil.BuildConfig;
 
 import android.content.Context;
 import android.hardware.usb.UsbConstants;

@@ -1,4 +1,4 @@
-package com.obnsoft.arduboyutils;
+package com.obnsoft.arduboyutil;
 
 import com.physicaloid.lib.Physicaloid;
 
