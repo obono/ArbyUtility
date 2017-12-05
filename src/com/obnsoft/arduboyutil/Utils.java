@@ -55,6 +55,7 @@ public class Utils {
             new File(Environment.getExternalStorageDirectory(), "ArduboyUtility");
     public static final File FLASH_DIRECTORY = new File(TOP_DIRECTORY, "Flash");
     public static final File EEPROM_DIRECTORY = new File(TOP_DIRECTORY, "EEPROM");
+    public static final File SHOT_DIRECTORY = new File(TOP_DIRECTORY, "ScreenShot");
 
     private static final String SCHEME_FILE = "file";
     private static final String SCHEME_CONTENT = "content";
@@ -101,6 +102,16 @@ public class Utils {
         dlg.show();
     }
 
+    public static void showListDialog(final Context context, int iconId, int titleId,
+            String[] items, OnClickListener listener) {
+        new AlertDialog.Builder(context)
+                .setIcon(iconId)
+                .setTitle(titleId)
+                .setItems(items, listener)
+                .setNegativeButton(android.R.string.cancel, (OnClickListener) null)
+                .show();
+    }
+
     public static void showToast(Context context, int msgId) {
         Toast.makeText(context, msgId, Toast.LENGTH_SHORT).show();
     }
@@ -115,6 +126,7 @@ public class Utils {
         TOP_DIRECTORY.mkdir();
         FLASH_DIRECTORY.mkdir();
         EEPROM_DIRECTORY.mkdir();
+        SHOT_DIRECTORY.mkdir();
     }
 
     public static String getBaseFileName(String filePath) {
@@ -136,7 +148,8 @@ public class Utils {
 
     public static String generateTempFile(final Context context, final Uri uri,
             final boolean isNet) {
-        final File file = new File(context.getCacheDir(), uri.getLastPathSegment());
+        String fileName = uri.getLastPathSegment().replaceAll("[\\\\/:*?\"<>|]", "_");
+        final File file = new File(context.getCacheDir(), fileName);
         MyAsyncTaskWithDialog.ITask task = new MyAsyncTaskWithDialog.ITask() {
             private boolean mIsCancelled = false;
             @Override
@@ -183,7 +196,7 @@ public class Utils {
                 }
             }
         };
-        MyAsyncTaskWithDialog.execute(context, R.string.messageDownloading, task);
+        MyAsyncTaskWithDialog.execute(context, true, R.string.messageDownloading, task);
         return file.getAbsolutePath();
     }
 

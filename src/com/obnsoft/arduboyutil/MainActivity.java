@@ -33,16 +33,17 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.usb.UsbManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
@@ -72,6 +73,8 @@ public class MainActivity extends Activity {
     private Physicaloid     mPhysicaloid;
     private Handler         mHandler;
     private Runnable        mRunnbaleWaitRestart;
+    private boolean         mIsDownloadEepromSpecified = false;
+    private boolean         mIsUploadEepromSpecified = false;
     private boolean         mIsExecuting = false;
 
     private OperationInfo[] mOperationInfos;
@@ -110,7 +113,7 @@ public class MainActivity extends Activity {
 
             parentView.setTag(this);
             mIsActive = (operation == Op.UPLOAD_FLASH);
-            mToggleButton.setOnClickListener(new OnClickListener() {
+            mToggleButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     OperationInfo info = (OperationInfo) ((View) v.getParent()).getTag();
@@ -173,6 +176,9 @@ public class MainActivity extends Activity {
         switch (item.getItemId()) {
         case R.id.menuMainConsole:
             startActivity(new Intent(this, ConsoleActivity.class));
+            return true;
+        case R.id.menuMainFind:
+            showUrlList();
             return true;
         case R.id.menuMainAbout:
             Utils.showVersion(this);
@@ -260,6 +266,7 @@ public class MainActivity extends Activity {
             mPhysicaloid.clearReadListener();
             mPhysicaloid.close();
         } else if (Intent.ACTION_VIEW.equals(action)) {
+            mOperationInfos[OP_UPLOAD_FLASH_IDX].mIsActive = true;
             mOperationInfos[OP_UPLOAD_FLASH_IDX].mFilePath =
                     Utils.getPathFromUri(this, intent.getData());
             controlUiAvalability();
@@ -304,24 +311,27 @@ public class MainActivity extends Activity {
     /*-----------------------------------------------------------------------*/
 
     private void setDefaultOperationFilePath(String baseName) {
-        mOperationInfos[OP_DOWNLOAD_FLASH_IDX].mFilePath =
-                new File(Utils.FLASH_DIRECTORY, baseName.concat(AvrTask.EXT_HEX)).getPath();
-        mOperationInfos[OP_DOWNLOAD_EEPROM_IDX].mFilePath =
-                new File(Utils.EEPROM_DIRECTORY, baseName.concat(AvrTask.EXT_EEPROM)).getPath();
+        setOperationFilePath(mOperationInfos[OP_DOWNLOAD_FLASH_IDX],
+                new File(Utils.FLASH_DIRECTORY, baseName.concat(AvrTask.EXT_HEX)).getPath());
     }
 
     private void setOperationFilePath(OperationInfo info, String filePath) {
         info.mFilePath = filePath;
         Op opration = info.mOperation;
-        if (opration == Op.DOWNLOAD_EEPROM || opration == Op.UPLOAD_EEPROM) {
+        if (opration == Op.DOWNLOAD_EEPROM) {
+            mIsDownloadEepromSpecified = true;
+            return;
+        } else if (opration == Op.UPLOAD_EEPROM) {
+            mIsUploadEepromSpecified = true;
             return;
         }
         String baseName = Utils.getBaseFileName(filePath);
         File suggestFile = new File(Utils.EEPROM_DIRECTORY, baseName.concat(AvrTask.EXT_EEPROM));
         String suggestFilePath = suggestFile.getPath();
-        if (opration == Op.DOWNLOAD_FLASH) {
+        if (opration == Op.DOWNLOAD_FLASH && !mIsDownloadEepromSpecified) {
             mOperationInfos[OP_DOWNLOAD_EEPROM_IDX].mFilePath = suggestFilePath;
-        } else if (opration == Op.UPLOAD_FLASH && suggestFile.exists()) {
+        } else if (opration == Op.UPLOAD_FLASH && !mIsUploadEepromSpecified
+                && suggestFile.exists()) {
             mOperationInfos[OP_UPLOAD_EEPROM_IDX].mFilePath = suggestFilePath;
         }
     }
@@ -423,8 +433,19 @@ public class MainActivity extends Activity {
                     String baseName = null;
                     for (OperationInfo info : mOperationInfos) {
                         if (info.mIsActive) {
-                            if (info.mOperation == Op.UPLOAD_FLASH) {
+                            switch (info.mOperation) {
+                            case DOWNLOAD_FLASH:
+                            default:
+                                break;
+                            case DOWNLOAD_EEPROM:
+                                mIsDownloadEepromSpecified = false;
+                                break;
+                            case UPLOAD_FLASH:
                                 baseName = Utils.getBaseFileName(info.mFilePath);
+                                break;
+                            case UPLOAD_EEPROM:
+                                mIsUploadEepromSpecified = false;
+                                break;
                             }
                             info.mIsActive = false;
                             info.mFilePath = null;
@@ -453,7 +474,23 @@ public class MainActivity extends Activity {
             }
         };
 
-        MyAsyncTaskWithDialog.execute(this, R.string.messageExecutingPrepare, task);
+        MyAsyncTaskWithDialog.execute(this, false, R.string.messageExecutingPrepare, task);
+    }
+
+    private void showUrlList() {
+        final String[] items = getResources().getStringArray(R.array.bookmarkArray);
+        DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                try {
+                    Uri uri = Uri.parse(items[which]);
+                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        Utils.showListDialog(this, R.drawable.ic_menu_find, R.string.menuFind, items, listener);
     }
 
     private void commitLastFlashName(String baseName) {

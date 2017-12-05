@@ -37,29 +37,35 @@ public class MyAsyncTaskWithDialog extends AsyncTask<Void, Integer, Boolean> {
         public void     post(Result result);
     }
 
-    public static void execute(Context context, int resId, ITask task) {
-        (new MyAsyncTaskWithDialog(context, resId, task)).execute();
+    public static void execute(Context context, boolean isSpinner, int messageId, ITask task) {
+        (new MyAsyncTaskWithDialog(context, isSpinner, messageId, task)).execute();
     }
 
     /*-----------------------------------------------------------------------*/
 
     private Context         mContext;
-    private int             mMsgResId;
+    private boolean         mIsSpinner;
+    private int             mMessageId;
     private ITask           mTask;
     private ProgressDialog  mDialog;
 
-    private MyAsyncTaskWithDialog(Context context, int resId, ITask task) {
+    private MyAsyncTaskWithDialog(Context context, boolean isSpinner, int messageId, ITask task) {
         mContext = context;
-        mMsgResId = resId;
+        mIsSpinner = isSpinner;
+        mMessageId = messageId;
         mTask = task;
     }
 
     @Override
     protected void onPreExecute() {
         mDialog = new ProgressDialog(mContext);
-        mDialog.setMessage(mContext.getText(mMsgResId));
-        mDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        mDialog.setIndeterminate(true);
+        mDialog.setMessage(mContext.getText(mMessageId));
+        if (mIsSpinner) {
+            mDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        } else {
+            mDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            mDialog.setIndeterminate(true);
+        }
         mDialog.setCancelable(false);
         mDialog.setButton(AlertDialog.BUTTON_NEUTRAL, mContext.getText(android.R.string.cancel),
                 new DialogInterface.OnClickListener() {

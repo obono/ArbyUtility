@@ -17,25 +17,38 @@
 
 package com.obnsoft.arduboyutil;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.Calendar;
+
+import com.obnsoft.arduboyutil.MyAsyncTaskWithDialog.Result;
+
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.media.MediaScannerConnection;
+import android.text.format.DateFormat;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.View.OnClickListener;
 
-public class CaptureView extends View {
+public class CaptureView extends View implements OnClickListener {
 
     private static final int WIDTH = 128;
     private static final int HEIGHT = 64;
     private static final int BITS_PER_BYTE = 8;
+    private static final String SHOT_FILE_NAME_FORMAT = "yyyyMMddhhmmss'.png'";
 
     private Bitmap      mBitmap;
     private Bitmap      mBitmapBack;
     private Matrix      mMatrix;
     private Paint       mPaint;
+    private boolean     mIsAvailable;
     private int         mDrawX;
     private int         mDrawY;
 
@@ -54,6 +67,7 @@ public class CaptureView extends View {
         mMatrix = new Matrix();
         mPaint = new Paint(0); // No ANTI_ALIAS_FLAG, No FILTER_BITMAP_FLAG
         setFocusable(false);
+        this.setOnClickListener(this);
     }
 
     @Override
@@ -65,16 +79,68 @@ public class CaptureView extends View {
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
+    protected synchronized void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (!mBitmap.isRecycled()) {
             canvas.drawBitmap(mBitmap, mMatrix, mPaint);
         }
     }
 
-    public void reset() {
+    @Override
+    public synchronized void onClick(View v) {
+        if (!mIsAvailable || mBitmap.isRecycled()) {
+            return;
+        }
+        final Context context = getContext();
+        final Bitmap bitmapWork = mBitmap.copy(Bitmap.Config.RGB_565, false);
+        mIsAvailable = false;
+        String fileName = DateFormat.format(
+                SHOT_FILE_NAME_FORMAT, Calendar.getInstance()).toString();
+        final File file = new File(Utils.SHOT_DIRECTORY, fileName);
+        MyAsyncTaskWithDialog.ITask task = new MyAsyncTaskWithDialog.ITask() {
+            @Override
+            public Boolean task(ProgressDialog dialog) {
+                try {
+                    FileOutputStream out = new FileOutputStream(file);
+                    bitmapWork.compress(CompressFormat.PNG, 0, out);
+                    out.close();
+                    return true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            };
+            @Override
+            public void cancel() {
+            }
+            @Override
+            public void post(Result result) {
+                switch (result) {
+                case SUCCEEDED:
+                    MediaScannerConnection.scanFile(context,
+                            new String[] { file.getAbsolutePath() }, null, null);
+                    String message = String.format(
+                            context.getString(R.string.messageSavedScreenShot), file.getName());
+                    Utils.showToast(context, message);
+                    break;
+                case FAILED:
+                case CANCELLED:
+                default:
+                    break;
+                }
+            }
+        };
+        MyAsyncTaskWithDialog.execute(context, true, R.string.messageSavingScreenShot, task);
+    }
+
+    public synchronized void reset() {
+        mIsAvailable = false;
         mDrawX = 0;
         mDrawY = 0;
+        if (!mBitmap.isRecycled()) {
+            mBitmap.eraseColor(Color.BLACK);
+            postInvalidate();
+        }
     }
 
     public synchronized void appendData(byte[] data) {
@@ -92,6 +158,7 @@ public class CaptureView extends View {
                 mDrawX = 0;
                 mDrawY += BITS_PER_BYTE;
                 if (mDrawY >= HEIGHT) {
+                    mIsAvailable = true;
                     mDrawY = 0;
                     Bitmap tmp = mBitmap;
                     mBitmap = mBitmapBack;
@@ -105,6 +172,7 @@ public class CaptureView extends View {
     public synchronized void onDestroy() {
         mBitmap.recycle();
         mBitmapBack.recycle();
+        mIsAvailable = false;
     }
 
 }

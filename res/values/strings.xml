@@ -19,12 +19,13 @@
     <string name="textViewOprationUploadEeprom">Upload EEPROM</string>
     <string name="textViewFileNotSpecified">(Not specified)</string>
     <string name="menuConsole">Serial monitor</string>
+    <string name="menuFind">Find from web</string>
     <string name="menuAbout">About</string>
     <string name="menuUpper">Upper</string>
     <string name="menuBack">Back</string>
     <string name="menuScreenCapture">Screen capture</string>
     <string name="menuKeyboard">Keyboard</string>
-    <string name="menuClear">Clear</string>
+    <string name="menuClear">Clear buffer</string>
     <string name="messageNoFiles">No files</string>
     <string name="messageInvalid">Invalid file name</string>
     <string name="messageNewFile">New file</string>
@@ -42,4 +43,6 @@
     <string name="messageExecutingFailed">Error: </string>
     <string name="messageExecutingFailedDefault">Operation(s) was failed</string>
     <string name="messageExecutingFailedUnknwon">Unknown Error!</string>
+    <string name="messageSavingScreenShot">Saving captured image&#8230;</string>
+    <string name="messageSavedScreenShot">\"%s\" was saved</string>
 </resources>

@@ -36,7 +36,8 @@
         android:layout_height="16dp"
         android:layout_toRightOf="@id/toggleButton"
         android:layout_below="@id/textViewOperation"
-        android:layout_alignBottom="@id/buttonPickFile" />
+        android:layout_alignBottom="@id/buttonPickFile"
+        android:contentDescription="@string/image" />
 
     <TextView
         android:id="@+id/textViewFileName"
@@ -45,6 +46,8 @@
         android:layout_toRightOf="@id/imageViewFileIcon"
         android:layout_toLeftOf="@id/buttonPickFile"
         android:layout_below="@id/textViewOperation"
+        android:ellipsize="end"
+        android:singleLine="true"
         android:textAppearance="?android:attr/textAppearanceSmall" />
 
 </RelativeLayout>

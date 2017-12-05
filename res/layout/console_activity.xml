@@ -42,28 +42,23 @@
 
     <ScrollView
         android:id="@+id/scrollViewConsole"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentRight="true"
         android:layout_below="@id/spinnerBaudRate"
         android:layout_alignParentBottom="true" >
         <TextView
             android:id="@+id/textViewConsole"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:typeface="monospace" />
     </ScrollView>
 
     <com.obnsoft.arduboyutil.CaptureView
         android:id="@+id/screenCaptureView"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentRight="true"
         android:layout_below="@id/spinnerBaudRate"
-        android:layout_alignParentBottom="true"
-        android:visibility="invisible" />
+        android:layout_alignParentBottom="true" />
 
 </RelativeLayout>

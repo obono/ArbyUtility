@@ -7,6 +7,12 @@
         android:showAsAction="always"
         />
     <item
+        android:id="@+id/menuMainFind"
+        android:title="@string/menuFind"
+        android:icon="@drawable/ic_menu_find"
+        android:showAsAction="ifRoom"
+        />
+    <item
         android:id="@+id/menuMainAbout"
         android:title="@string/menuAbout"
         android:icon="@android:drawable/ic_menu_info_details"

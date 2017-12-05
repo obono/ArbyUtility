@@ -49,17 +49,21 @@ public class ConsoleActivity extends Activity {
     private static final String PREFS_KEY_NEW_LINE = "new_line";
     private static final String PREFS_KEY_ECHO = "echo";
     private static final String PREFS_KEY_SCROLL = "scroll";
+    private static final String PREFS_KEY_CAPTURE_MODE = "capture_mode";
 
     private static final int BAUD_RATE_ITEM_IDX_DEFAULT = 2;
     private static final int NEW_LINE_ITEM_IDX_DEFAULT = 1;
     private static final boolean ECHO_DEFAULT = false;
     private static final boolean SCROLL_DEFAULT = true;
+    private static final boolean CAPTURE_MODE_DEFAULT = false;
 
     private static final int BYTE_CODE_NEW_LINE = '\n';
-    private static final int BYTE_CODE_MIN = 0x01;
-    private static final int BYTE_CODE_MAX = 0xff;
+    private static final int BYTE_CODE_MIN = ' '; // 0x20
+    private static final int BYTE_CODE_MAX = '~'; // 0x7e
     private static final byte[][] NEWLINE_CHAR_LIST = {
             new byte[] { '\r' }, new byte[] { '\n' }, new byte[] { '\r', '\n' } };
+    private static final String CONSOLE_CHARSET = "US-ASCII";
+    private static final int CONSOLE_MAX_LEN = 1024 * 16;
 
     private MyApplication mApp;
     private Physicaloid mPhysicaloid;
@@ -73,7 +77,10 @@ public class ConsoleActivity extends Activity {
     private CaptureView mCaptureView;
 
     private boolean     mIsScreenCapture;
-    private Handler     mHandler = new Handler();
+    private Handler     mHandler;
+    private StringBuffer mConsoleBuffer;
+    private boolean     mIsConsoleDirty;
+
     private BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -119,9 +126,13 @@ public class ConsoleActivity extends Activity {
                 prefs.getInt(PREFS_KEY_NEW_LINE, NEW_LINE_ITEM_IDX_DEFAULT), false);
         mCheckBoxEcho.setChecked(prefs.getBoolean(PREFS_KEY_ECHO, ECHO_DEFAULT));
         mCheckBoxScroll.setChecked(prefs.getBoolean(PREFS_KEY_SCROLL, SCROLL_DEFAULT));
+        mIsScreenCapture = prefs.getBoolean(PREFS_KEY_CAPTURE_MODE, CAPTURE_MODE_DEFAULT);
+        controlUiVisibility();
 
         mApp = (MyApplication) getApplication();
         mPhysicaloid = mApp.getPhysicaloidInstance();
+        mHandler = new Handler();
+        mConsoleBuffer = new StringBuffer();
         registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
         if (openDevice()) {
             mApp.acquireWakeLock();
@@ -153,16 +164,12 @@ public class ConsoleActivity extends Activity {
             break;
         case R.id.menuConsoleCaptureMode:
             mIsScreenCapture = true;
+            controlUiVisibility();
             clearConsoleBuffer();
-            mTextViewConsole.setVisibility(View.INVISIBLE);
-            mCaptureView.setVisibility(View.VISIBLE);
-            invalidateOptionsMenu();
             return true;
         case R.id.menuConsoleMonitorMode:
             mIsScreenCapture = false;
-            mTextViewConsole.setVisibility(View.VISIBLE);
-            mCaptureView.setVisibility(View.INVISIBLE);
-            invalidateOptionsMenu();
+            controlUiVisibility();
             return true;
         case R.id.menuConsoleKeyboard:
             InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(
@@ -227,7 +234,7 @@ public class ConsoleActivity extends Activity {
                     mCaptureView.appendData(buf);
                 } else {
                     try {
-                        appendMessage(new String(buf, "ISO-8859-1"));
+                        appendMessage(new String(buf, CONSOLE_CHARSET));
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }
@@ -245,20 +252,40 @@ public class ConsoleActivity extends Activity {
         return Integer.parseInt((String) mSpinnerBaudRate.getSelectedItem());
     }
 
-    private void appendMessage(final CharSequence text) {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mTextViewConsole.append(text);
-                if (mCheckBoxScroll.isChecked()) {
-                    mScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                }
+    private void controlUiVisibility() {
+        mTextViewConsole.setVisibility(mIsScreenCapture ? View.INVISIBLE : View.VISIBLE);
+        mCaptureView.setVisibility(mIsScreenCapture ? View.VISIBLE : View.INVISIBLE);
+        invalidateOptionsMenu();
+    }
+
+    private void appendMessage(String text) {
+        synchronized (mConsoleBuffer) {
+            mConsoleBuffer.append(text);
+            int overLength = mConsoleBuffer.length() - CONSOLE_MAX_LEN;
+            if (overLength > 0) {
+                mConsoleBuffer.delete(0, overLength);
             }
-        });
+        }
+        if (!mIsConsoleDirty) {
+            mIsConsoleDirty = true;
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mTextViewConsole.setText(mConsoleBuffer.toString());
+                    if (mCheckBoxScroll.isChecked()) {
+                        mScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                    }
+                    mIsConsoleDirty = false;
+                }
+            });
+        }
     }
 
     private void clearConsoleBuffer() {
         mPhysicaloid.clearBuffer();
+        synchronized (mConsoleBuffer) {
+            mConsoleBuffer.setLength(0);
+        }
         mTextViewConsole.setText(null);
         mCaptureView.reset();
     }
@@ -270,6 +297,7 @@ public class ConsoleActivity extends Activity {
         editor.putInt(PREFS_KEY_NEW_LINE, mSpinnerNewLine.getSelectedItemPosition());
         editor.putBoolean(PREFS_KEY_ECHO, mCheckBoxEcho.isChecked());
         editor.putBoolean(PREFS_KEY_SCROLL, mCheckBoxScroll.isChecked());
+        editor.putBoolean(PREFS_KEY_CAPTURE_MODE, mIsScreenCapture);
         editor.commit();
     }
 

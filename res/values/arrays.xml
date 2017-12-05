@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <string-array name="bookmarkArray">
+        <item>http://www.crait.net/arduboy/</item>
+        <item>http://arduboy.ried.cl/</item>
+    </string-array>
+
     <string-array name="baudRateArray">
         <item>2400</item>
         <item>4800</item>

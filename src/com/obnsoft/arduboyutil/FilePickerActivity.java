@@ -301,7 +301,7 @@ public class FilePickerActivity extends ListActivity {
                 }
             }
         };
-        Utils.showCustomDialog(this, android.R.drawable.ic_input_add,
+        Utils.showCustomDialog(this, R.drawable.ic_item_file_new,
                 R.string.messageNewFile, editText, listener);
     }
 
