@@ -20,6 +20,7 @@ package com.obnsoft.arduboyutil;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import com.obnsoft.arduboyutil.MyAsyncTaskWithDialog.Result;
 import com.physicaloid.lib.Boards;
@@ -112,7 +113,6 @@ public class MainActivity extends Activity {
             mSupportExtentions = supportExtentions;
 
             parentView.setTag(this);
-            mIsActive = (operation == Op.UPLOAD_FLASH);
             mToggleButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -159,7 +159,11 @@ public class MainActivity extends Activity {
         if (intent != null) {
             handleIntent(intent);
         }
-        controlUiAvalability();
+        if (!mOperationInfos[OP_UPLOAD_FLASH_IDX].mIsActive &&
+                !mOperationInfos[OP_UPLOAD_EEPROM_IDX].mIsActive) {
+            mOperationInfos[OP_UPLOAD_FLASH_IDX].mIsActive = true;
+            controlUiAvalability();
+        }
         registerReceiver(mUsbReceiver, MyApplication.USB_RECEIVER_FILTER);
 
         mHandler = new Handler();
@@ -265,11 +269,17 @@ public class MainActivity extends Activity {
         } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
             mPhysicaloid.clearReadListener();
             mPhysicaloid.close();
-        } else if (Intent.ACTION_VIEW.equals(action)) {
-            mOperationInfos[OP_UPLOAD_FLASH_IDX].mIsActive = true;
-            mOperationInfos[OP_UPLOAD_FLASH_IDX].mFilePath =
-                    Utils.getPathFromUri(this, intent.getData());
-            controlUiAvalability();
+        } else if (Intent.ACTION_VIEW.equals(action) && intent.getData() != null) {
+            String filePath = Utils.getPathFromUri(this, intent.getData());
+            if (filePath != null) {
+                int index = OP_UPLOAD_FLASH_IDX;
+                if (filePath.toLowerCase(Locale.getDefault()).endsWith(AvrTask.EXT_EEPROM)) {
+                    index = OP_UPLOAD_EEPROM_IDX;
+                }
+                mOperationInfos[index].mIsActive = true;
+                setOperationFilePath(mOperationInfos[index], filePath);
+                controlUiAvalability();
+            }
         }
     }
 

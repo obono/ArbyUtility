@@ -215,7 +215,11 @@ public class Utils {
             PackageInfo packageInfo = context.getPackageManager().getPackageInfo(
                     context.getPackageName(), PackageManager.GET_META_DATA);
             TextView textView = (TextView) aboutView.findViewById(R.id.textAboutVersion);
-            textView.setText("Version " + packageInfo.versionName);
+            String versionStr = "Version ".concat(packageInfo.versionName);
+            if (BuildConfig.DEBUG) {
+                versionStr = versionStr.concat(" debug");
+            }
+            textView.setText(versionStr);
 
             StringBuilder buf = new StringBuilder();
             InputStream in = context.getResources().openRawResource(R.raw.license);

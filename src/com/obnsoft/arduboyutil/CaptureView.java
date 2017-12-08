@@ -42,7 +42,7 @@ public class CaptureView extends View implements OnClickListener {
     private static final int WIDTH = 128;
     private static final int HEIGHT = 64;
     private static final int BITS_PER_BYTE = 8;
-    private static final String SHOT_FILE_NAME_FORMAT = "yyyyMMddhhmmss'.png'";
+    private static final String SHOT_FILE_NAME_FORMAT = "yyyyMMddkkmmss'.png'";
 
     private Bitmap      mBitmap;
     private Bitmap      mBitmapBack;
