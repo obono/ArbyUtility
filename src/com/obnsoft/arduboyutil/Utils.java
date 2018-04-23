@@ -52,10 +52,12 @@ import android.widget.Toast;
 public class Utils {
 
     public static final File TOP_DIRECTORY =
-            new File(Environment.getExternalStorageDirectory(), "ArduboyUtility");
+            new File(Environment.getExternalStorageDirectory(), "ArbyUtility");
     public static final File FLASH_DIRECTORY = new File(TOP_DIRECTORY, "Flash");
     public static final File EEPROM_DIRECTORY = new File(TOP_DIRECTORY, "EEPROM");
     public static final File SHOT_DIRECTORY = new File(TOP_DIRECTORY, "ScreenShot");
+    public static final File OLD_TOP_DIRECTORY =
+            new File(Environment.getExternalStorageDirectory(), "ArduboyUtility");
 
     private static final String SCHEME_FILE = "file";
     private static final String SCHEME_CONTENT = "content";
@@ -123,7 +125,13 @@ public class Utils {
     /*-----------------------------------------------------------------------*/
 
     public static void generateFolders() {
-        TOP_DIRECTORY.mkdir();
+        if (!TOP_DIRECTORY.exists()) {
+            if (OLD_TOP_DIRECTORY.exists()) {
+                OLD_TOP_DIRECTORY.renameTo(TOP_DIRECTORY);
+            } else {
+                TOP_DIRECTORY.mkdir();
+            }
+        }
         FLASH_DIRECTORY.mkdir();
         EEPROM_DIRECTORY.mkdir();
         SHOT_DIRECTORY.mkdir();

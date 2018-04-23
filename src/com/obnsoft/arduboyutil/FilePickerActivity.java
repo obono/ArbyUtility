@@ -14,7 +14,7 @@
  * limitations under the License.
  * 
  * 
- * This source code was modified by OBONO in November 2017.
+ * This source code was modified by OBONO in April 2018.
  */
 
 package com.obnsoft.arduboyutil;
@@ -235,15 +235,21 @@ public class FilePickerActivity extends ListActivity {
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        MenuItem item = menu.findItem(R.id.menuFilePickerBack);
+        item.setVisible(!mStackPath.isEmpty());
+        return true;
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
         case android.R.id.home:
             finish();
             break;
         case R.id.menuFilePickerBack:
-            if (!mStackPath.isEmpty()) {
-                onBackPressed();
-            }
+            onBackPressed();
             return true;
         case R.id.menuFilePickerGoUpper:
             goToUpperDirectory();
@@ -264,6 +270,7 @@ public class FilePickerActivity extends ListActivity {
     public void onCurrentDirectoryChanged(String path) {
         TextView tv = (TextView) findViewById(R.id.textViewCurrentDirectory);
         tv.setText(getTrimmedCurrentDirectory(path));
+        invalidateOptionsMenu();
     }
 
     public void onFileSelected(String path) {

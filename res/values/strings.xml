@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="appCode">OBN-A18</string>
-    <string name="appName">Arduboy Utility</string>
+    <string name="appName">Arby Utility</string>
     <string name="appNameFilePickerRead">Choose file to read</string>
     <string name="appNameFilePickerWrite">Choose file to write</string>
     <string name="appNameConsole">Serial monitor</string>
